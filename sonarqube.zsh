@@ -165,15 +165,7 @@ sonaradm() {
 
 # Set up autocompletion for the sonaradm command
 _sonaradm_autocomplete() {
-    local cur=${words[CURRENT]}
-    local commands="setup scan backup stop resume cleanup status"
-
-    # If the current word is empty or incomplete, offer suggestions
-    if [[ ${#cur} -eq 0 ]]; then
-        compadd $commands
-    else
-        compadd $(echo $commands | tr ' ' '\n' | grep "^$cur")
-    fi
+    compadd setup scan backup stop resume cleanup status
 }
 
 compdef _sonaradm_autocomplete sonaradm

@@ -190,15 +190,7 @@ psqladm() {
 
 # Set up autocompletion for the psqladm command
 _psqladm_autocomplete() {
-    local cur=${words[CURRENT]}
-    local commands="setup add_database backup stop resume cleanup status"
-
-    # If the current word is empty or incomplete, offer suggestions
-    if [[ ${#cur} -eq 0 ]]; then
-        compadd $commands
-    else
-        compadd $(echo $commands | tr ' ' '\n' | grep "^$cur")
-    fi
+    compadd setup add_database backup stop resume cleanup status
 }
 
 compdef _psqladm_autocomplete psqladm

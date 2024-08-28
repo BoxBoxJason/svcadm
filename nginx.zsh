@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 
 # Nginx service management script wrapper
 # Usage: nginxadm {setup|stop|resume|cleanup|status}
@@ -150,15 +150,7 @@ server {
 
 # Set up autocompletion for the nginxadm command
 _nginxadm_autocomplete() {
-    local cur=${words[CURRENT]}
-    local commands="setup stop resume cleanup status"
-
-    # If the current word is empty or incomplete, offer suggestions
-    if [[ ${#cur} -eq 0 ]]; then
-        compadd $commands
-    else
-        compadd $(echo $commands | tr ' ' '\n' | grep "^$cur")
-    fi
+    compadd setup stop resume cleanup status
 }
 
 compdef _nginxadm_autocomplete nginxadm

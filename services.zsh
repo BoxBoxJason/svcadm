@@ -167,15 +167,7 @@ svcadm() {
 
 # Set up autocompletion for the svcadm command
 _svcadm_autocomplete() {
-    local cur=${words[CURRENT]}
-    local commands="setup backup stop resume cleanup status"
-
-    # If the current word is empty or incomplete, offer suggestions
-    if [[ ${#cur} -eq 0 ]]; then
-        compadd $commands
-    else
-        compadd $(echo $commands | tr ' ' '\n' | grep "^$cur")
-    fi
+    compadd setup backup stop resume cleanup status
 }
 
 compdef _svcadm_autocomplete svcadm
