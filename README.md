@@ -5,4 +5,5 @@ svcadm is a command-line utility for managing services on unix and MacOS systems
 - code quality tools (sonarqube)
 - storage (minio)
 - web servers (nginx)
+- integrity scan (trivy, clamav)
 - and more to come...
