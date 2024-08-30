@@ -10,6 +10,7 @@
 #   resume: Resume SonarQube container
 #   cleanup: Remove SonarQube container, volumes and network
 #   status: Check SonarQube container status
+#   nginxconf: Print the nginx configuration for SonarQube
 #
 # Environment variables:
 #   SONARQUBE: Path to the SonarQube service
@@ -133,6 +134,19 @@ sonaradm() {
         fi
     }
 
+    # Print the nginx configuration for SonarQube
+    nginxconf() {
+        cat <<EOF
+    location /sonarqube {
+        proxy_pass http://$SONARQUBE_CONTAINER_NAME:9000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+EOF
+    }
+
     case "$cmd" in
         setup)
             setup
@@ -155,8 +169,11 @@ sonaradm() {
         status)
             status
             ;;
+        nginxconf)
+            nginxconf
+            ;;
         *)
-            echo "Usage: sonaradm {setup|scan|backup|stop|resume|cleanup|status}"
+            echo "Usage: sonaradm {setup|scan|backup|stop|resume|cleanup|status|nginxconf}"
             return 1
             ;;
     esac

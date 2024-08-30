@@ -44,7 +44,7 @@ nginxadm() {
     local IMAGE_NAME="nginx:stable-alpine"
     local HTTP_PORT="80"
     local HTTPS_PORT="443"
-    local SERVICES=("$SONARQUBE_CONTAINER_NAME:9000" "$MINIO_CONTAINER_NAME:9001")
+    local SERVICES=("sonaradm" "minioadm")
     local NGINX_CONF="$NGINX/conf"
     local KEY_PATH="/etc/ssl/private/$(hostname).key"
     local CERT_PATH="/etc/ssl/certs/$(hostname).crt"
@@ -74,27 +74,19 @@ server {
     ssl_ciphers HIGH:!aNULL:!MD5;
 " > $NGINX_CONF/nginx.conf
         for service in "${SERVICES[@]}"; do
-            IFS=":" read -r service_name service_port <<< "$service"
-            echo "    location /$service_name {
-        proxy_pass http://$service_name:$service_port;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-" >> $NGINX_CONF/nginx.conf
+            $service nginxconf >> $NGINX_CONF/nginx.conf
         done
 
         echo "}" >> $NGINX_CONF/nginx.conf
         # Start the nginx container
         docker run -d --name $NGINX_CONTAINER_NAME \
-        --network $SERVICES_NETWORK \
-        -v $NGINX_CONF/nginx.conf:/etc/nginx/conf.d/default.conf \
-        -v $CERT_PATH:$CERT_PATH \
-        -v $KEY_PATH:$KEY_PATH \
-        -p $HTTP_PORT:80 \
-        -p $HTTPS_PORT:443 \
-        $IMAGE_NAME
+            --network $SERVICES_NETWORK \
+            -v $NGINX_CONF/nginx.conf:/etc/nginx/conf.d/default.conf \
+            -v $CERT_PATH:$CERT_PATH \
+            -v $KEY_PATH:$KEY_PATH \
+            -p $HTTP_PORT:80 \
+            -p $HTTPS_PORT:443 \
+            $IMAGE_NAME
     }
 
     # Stop nginx container
