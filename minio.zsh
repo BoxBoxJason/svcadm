@@ -59,7 +59,7 @@ minioadm() {
             echo "Using existing MinIO credentials"
         else
             echo "Generating random credentials for MinIO"
-            echo "$(whoami)" > "$USERNAME_FILE"
+            echo "admin" > "$USERNAME_FILE"
             generate_password > "$PASSWORD_FILE"
         fi
         docker volume create $VOLUME_NAME

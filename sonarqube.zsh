@@ -60,7 +60,7 @@ sonaradm() {
         echo "Starting SonarQube container"
         # Create the SonarQube database
         if docker ps --filter "name=$POSTGRESQL_CONTAINER_NAME" --filter "status=running" | grep -q $POSTGRESQL_CONTAINER_NAME; then
-            psqladm add_database sonarqube $(whoami)
+            psqladm add_database sonarqube sonar
             docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "GRANT ALL PRIVILEGES ON SCHEMA public TO sonarqube;"
         else
             echo "PostgreSQL container not running. Please start it using 'psqladm setup'"
