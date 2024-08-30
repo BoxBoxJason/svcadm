@@ -41,7 +41,6 @@ psqladm() {
 
     local VOLUME_NAME="postgresql_data"
     local IMAGE_NAME="postgres:15"
-    local PORT="5432"
     local BACKUP_DIR="$POSTGRESQL/backup"
     local CREDENTIALS_DIR="$POSTGRESQL/.credentials"
 
@@ -112,7 +111,7 @@ psqladm() {
 
     # Resume PostgreSQL container
     resume() {
-        echo "Resuming PostgreSQL container, accessible at localhost:$PORT"
+        echo "Resuming PostgreSQL container"
         docker start $POSTGRESQL_CONTAINER_NAME
     }
 

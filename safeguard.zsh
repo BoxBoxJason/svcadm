@@ -29,7 +29,7 @@ safeguard() {
 
     local WATCH_DIRS=("$HOME/Downloads" "$HOME/Documents" "$HOME/Music" "$HOME/Pictures" "$HOME/Videos")
     local LOG_DIR="/var/log/scan"
-    local LOG_FILE="$LOG_DIR/downloads.log"
+    local LOG_FILE="$LOG_DIR/safeguard.log"
     local QUANRANTINE_DIR="$HOME/.quantantine"
 
     # Start the monitoring and securing all of the directories
