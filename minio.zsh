@@ -68,6 +68,7 @@ minioadm() {
             -v $VOLUME_NAME:/data \
             -e "MINIO_ROOT_USER=$(cat $USERNAME_FILE)" \
             -e "MINIO_ROOT_PASSWORD=$(cat $PASSWORD_FILE)" \
+            -e "MINIO_BROWSER_REDIRECT_URL=https://$(hostname)/minio" \
             $IMAGE_NAME server /data --console-address ":9001"
         if [ $? -ne 0 ]; then
             echo "Error starting MinIO container"
@@ -174,22 +175,37 @@ minioadm() {
     # Print the nginx configuration for MinIO
     nginxconf() {
         cat <<EOF
-    location /minio {
-        proxy_pass http://$MINIO_CONTAINER_NAME:9001;
-        proxy_set_header Host \$host;
+    # MinIO Web UI
+    location /minio/ {
+        rewrite ^/minio/(.*) /\$1 break;
+
+        proxy_set_header Host \$http_host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        rewrite ^/minio/(.*)$ /$1 break;
+        proxy_set_header X-NginX-Proxy true;
+
+        proxy_set_header Accept-Encoding "";
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        proxy_buffering off;
+
+        proxy_pass http://$MINIO_CONTAINER_NAME:9001/;
     }
 
-    location /minio-api {
+    # MinIO API
+    location /minio-api/ {
         proxy_pass http://$MINIO_CONTAINER_NAME:9000;
-        proxy_set_header Host \$host;
+        proxy_set_header Host \$http_host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        rewrite ^/minio-api/(.*)$ /$1 break;
+
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        proxy_buffering off;
     }
 EOF
     }
