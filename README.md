@@ -9,15 +9,24 @@ svcadm is a command-line utility for managing services on unix and MacOS systems
 - and more to come...
 
 ## Table of Contents
-
+- [Installation](#installation)
 - [Usage](#usage)
   - [psqladm](#psqladm)
   - [nginxadm](#nginxadm)
   - [sonaradm](#sonarqubeadm)
   - [safeguard](#safeguard)
-- [Installation](#installation)
+  - [minioadm](#minioadm)
 - [Customization](#customization)
 - [License](#license)
+
+## Installation
+
+1. Make sure you have `zsh` installed on your system. If not, you can install it using the package manager of your choice.
+2. Clone the repository to your local machine `git clone https://github.com/boxboxjason/svcadm.git`
+3. Navigate to the `svcadm` directory `cd svcadm`
+4. Source all of the scripts in your `.zshrc` file by adding `source /path/to/svcadm/*.zsh` to your `.zshrc` file. If you use `oh-my-zsh`, you can simply move the scripts to the `.oh-ùy-zsh/custom` directory.
+
+## Usage
 
 ### psqladm
 
@@ -283,9 +292,6 @@ minioadm remove_bucket mybucket
 minioadm cleanup
 ```
 
-## Installation
-
-1. Make sure you have `zsh` installed on your system. If not, you can install it using the package manager of your choice.
-2. Clone the repository to your local machine `git clone https://github.com/boxboxjason/svcadm.git`
-3. Navigate to the `svcadm` directory `cd svcadm`
-4. Source all of the scripts in your `.zshrc` file by adding `source /path/to/svcadm/*.zsh` to your `.zshrc` file. If you use `oh-my-zsh`, you can simply move the scripts to the `.oh-ùy-zsh/custom` directory.
+## License
+This Software is under the Unlicense License. Meaning you can do whatever you want with it.  
+See the [LICENSE](LICENSE) file for details.

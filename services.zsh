@@ -17,6 +17,8 @@
 #   SONARQUBE_CONTAINER_NAME: Name of the SonarQube container
 #   NGINX: Path to the nginx service
 #   NGINX_CONTAINER_NAME: Name of the nginx container
+#   MINIO: Path to the MinIO service
+#   MINIO_CONTAINER_NAME: Name of the MinIO container
 #   SERVICES_NETWORK: Name of the services network
 #
 # Dependencies: docker, jq, curl
@@ -70,6 +72,12 @@ svcadm() {
     elif [ -z "$NGINX_CONTAINER_NAME" ]; then
         echo "NGINX_CONTAINER_NAME environment variable not set. Please set it to the name of the nginx container"
         return 2
+    elif [ -z "$MINIO" ]; then
+        echo "MINIO environment variable not set. Please set it to the path of the MinIO service"
+        return 2
+    elif [ -z "$MINIO_CONTAINER_NAME" ]; then
+        echo "MINIO_CONTAINER_NAME environment variable not set. Please set it to the name of the MinIO container"
+        return 2
     elif [ -z "$SERVICES_NETWORK" ]; then
         echo "SERVICES_NETWORK environment variable not set. Please set it to the name of the services network"
         return 2
@@ -96,21 +104,27 @@ svcadm() {
         elif docker ps --filter "name=$NGINX_CONTAINER_NAME" --filter "status=running" | grep -q $NGINX_CONTAINER_NAME; then
             echo "nginx container is already running"
             return 1
+        elif docker ps --filter "name=$MINIO_CONTAINER_NAME" --filter "status=running" | grep -q $MINIO_CONTAINER_NAME; then
+            echo "MinIO container is already running"
+            return 1
         fi
         psqladm setup
         sonaradm setup
+        minioadm setup
         nginxadm setup
     }
 
     backup() {
         psqladm backup *
         sonaradm backup
+        minioadm backup *
     }
 
     # Stop services containers
     stop() {
         nginxadm stop
         sonaradm stop
+        minioadm stop
         psqladm stop
     }
 
@@ -118,6 +132,7 @@ svcadm() {
     resume() {
         psqladm resume
         sonaradm resume
+        minioadm resume
         nginxadm resume
     }
 
@@ -126,6 +141,7 @@ svcadm() {
         nginxadm cleanup
         sonaradm cleanup
         psqladm cleanup
+        minioadm cleanup
         docker network rm -f $SERVICES_NETWORK
     }
 
@@ -137,6 +153,8 @@ svcadm() {
         sonaradm status
         echo "nginx container status:"
         nginxadm status
+        echo "MinIO container status:"
+        minioadm status
     }
 
     case $cmd in
