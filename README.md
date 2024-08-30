@@ -47,7 +47,6 @@ To use the `psqladm` script, several environment variables need to be configured
 - **Docker**: Ensure Docker is installed and running on your machine. The script uses Docker commands to manage the PostgreSQL container and related resources.
 
 #### Example Usage
-
 ```bash
 # Set up and start the PostgreSQL container
 psqladm setup
@@ -83,6 +82,7 @@ psqladm add_database exampledb myuser mypassword
 - `resume`: Resumes the SonarQube container from a stopped state, allowing you to continue from where you left off without data loss.
 - `cleanup`: Removes the SonarQube container, associated Docker volumes, and network settings. This is a destructive action that deletes all stored data and configurations.
 - `status`: Checks and displays the status of the SonarQube container, indicating whether it is running, stopped, or not present.
+- `nginxconf`: Generates an Nginx configuration for reverse proxying SonarQube.
 
 #### Environment Variables
 
@@ -224,6 +224,63 @@ safeguard status
 
 # Clear all quarantine files and stop the safeguarding process
 safeguard clear
+```
+
+### minioadm
+
+**minioadm** is a wrapper script designed to manage a MinIO container, which is an object storage service compatible with Amazon S3. The script automates various tasks such as setting up the MinIO environment, managing storage buckets, performing backups, and handling the container lifecycle.
+
+#### Commands
+- **`setup`**: Initializes and starts the MinIO container with persistent storage. It sets up the necessary Docker volumes and network configurations.
+- **`resume`**: Resumes a stopped MinIO container to continue operations without data loss.
+- **`add_bucket`**: Adds a new bucket to the running MinIO container. Useful for organizing storage for different projects or environments.
+- **`remove_bucket`**: Removes an existing bucket from the MinIO container.
+- **`backup`**: Backs up a specific bucket from the MinIO container to a designated backup directory.
+- **`stop`**: Stops the running MinIO container without removing any data or configuration. This command is useful for temporarily halting operations.
+- **`cleanup`**: Removes the MinIO container and all associated Docker volumes and network settings. This action is irreversible and will delete all stored data.
+- **`status`**: Checks and displays the status of the MinIO container, indicating whether it is running, stopped, or not present.
+- **`nginxconf`**: Generates and prints the Nginx configuration for reverse proxying the MinIO service.
+
+#### Environment Variables
+
+To use the `minioadm` script, several environment variables need to be configured:
+
+- **`MINIO`**: This environment variable should point to the path where MinIO-related data and configurations are stored. This path is used for storing configurations and data.
+- **`MINIO_CONTAINER_NAME`**: Specifies the name of the MinIO Docker container. This name is used to identify and manage the container.
+- **`SERVICES_NETWORK`**: Defines the Docker network in which the MinIO container will be placed. This network should be preconfigured or set up during the `setup` command.
+
+#### Customization
+- **MinIO Version**: To change the MinIO version or image, edit the respective `IMAGE_NAME` variable in the script.
+- **Bucket Management**: The default command creates a bucket using the MinIO client. To modify bucket management behavior, adjust the corresponding functions in the script.
+
+#### Dependencies
+- **Docker**: Ensure Docker is installed and running on your machine. The script uses Docker commands to manage the MinIO container and related resources.
+
+#### Example Usage
+```bash
+# Set up and start the MinIO container
+minioadm setup
+
+# Add a new bucket named 'mybucket' to the MinIO container
+minioadm add_bucket mybucket
+
+# Backup the 'mybucket' bucket
+minioadm backup mybucket
+
+# Stop the MinIO container
+minioadm stop
+
+# Resume the MinIO container
+minioadm resume
+
+# Check the status of the MinIO container
+minioadm status
+
+# Remove a bucket named 'mybucket' from the MinIO container
+minioadm remove_bucket mybucket
+
+# Clean up the MinIO container and all resources
+minioadm cleanup
 ```
 
 ## Installation

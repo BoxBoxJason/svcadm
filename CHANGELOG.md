@@ -1,5 +1,10 @@
 # svcadm CHANGELOG
 
+## [Minio] - 2024-08-30
+
+### Added
+- Added Minio service
+
 ## [Safeguard] - 2024-08-28
 
 ### Added
@@ -14,7 +19,6 @@
 - Initial services:
   - PostgreSQL
   - SonarQube
-  - Minio
   - Nginx
 - Documentation:
   - README.md
