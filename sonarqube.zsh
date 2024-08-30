@@ -44,7 +44,6 @@ sonaradm() {
     shift
 
     local IMAGE_NAME="sonarqube:10.6-community"
-    local PORT="9000"
     local BACKUP_DIR="$SONARQUBE/backup"
 
     # Set up SonarQube volumes, create the database and start the container
@@ -60,7 +59,7 @@ sonaradm() {
         echo "Starting SonarQube container"
         # Create the SonarQube database
         if docker ps --filter "name=$POSTGRESQL_CONTAINER_NAME" --filter "status=running" | grep -q $POSTGRESQL_CONTAINER_NAME; then
-            psqladm add_database sonarqube sonarqube
+            psqladm add_database sonarqube $(whoami)
             docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "GRANT ALL PRIVILEGES ON SCHEMA public TO sonarqube;"
         else
             echo "PostgreSQL container not running. Please start it using 'psqladm setup'"
@@ -121,7 +120,7 @@ sonaradm() {
 
     # Check SonarQube container status
     status() {
-        local SONARQUBE_URL="http://localhost:$PORT"
+        local SONARQUBE_URL="http://localhost:9000"
         if docker ps --filter "name=$SONARQUBE_CONTAINER_NAME" --filter "status=running" | grep -q $SONARQUBE_CONTAINER_NAME; then
             STATUS=$(curl -s "$SONARQUBE_URL/api/system/health" | jq -r .health)
             if [ "$STATUS" = "GREEN" ]; then
