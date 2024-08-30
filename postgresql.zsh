@@ -94,9 +94,8 @@ psqladm() {
             echo "$PASSWORD" > "$CREDENTIALS_DIR/$1.pass"
 
             # Create the database and set the owner
-            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "CREATE DATABASE $1;" && \
-            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "CREATE USER $2 WITH PASSWORD '$PASSWORD';" && \
-            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "ALTER DATABASE $1 OWNER TO $2;" && \
+            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "CREATE USER $2 WITH PASSWORD '$PASSWORD';"
+            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "CREATE DATABASE $1 OWNER $2;"
             docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $1 TO $2;"
         else
             echo "PostgreSQL container is not running, please use 'postgresql resume' to start the container"

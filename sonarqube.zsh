@@ -46,6 +46,8 @@ sonaradm() {
 
     local IMAGE_NAME="sonarqube:10.6-community"
     local BACKUP_DIR="$SONARQUBE/backup"
+    local SONAR_DB_NAME="sonarqube"
+    local SONAR_DB_USER="sonar"
 
     # Set up SonarQube volumes, create the database and start the container
     setup() {
@@ -60,8 +62,8 @@ sonaradm() {
         echo "Starting SonarQube container"
         # Create the SonarQube database
         if docker ps --filter "name=$POSTGRESQL_CONTAINER_NAME" --filter "status=running" | grep -q $POSTGRESQL_CONTAINER_NAME; then
-            psqladm add_database sonarqube sonar
-            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "GRANT ALL PRIVILEGES ON SCHEMA public TO sonarqube;"
+            psqladm add_database $SONAR_DB_NAME $SONAR_DB_USER
+            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "GRANT ALL PRIVILEGES ON SCHEMA public TO $SONAR_DB_USER;"
         else
             echo "PostgreSQL container not running. Please start it using 'psqladm setup'"
             return 1
