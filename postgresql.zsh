@@ -1,10 +1,11 @@
 #!/bin/zsh
 
 # PostgreSQL service management script wrapper
-# Usage: psqladm {setup|add_database|backup|stop|resume|cleanup|status}
+# Usage: psqladm {setup|add_database|remove_database|backup|stop|resume|cleanup|status}
 # Arguments:
 #   setup: Set up PostgreSQL container & volume, start the container
 #   add_database: Add a database to the PostgreSQL container
+#   remove_database: Remove a database from the PostgreSQL container
 #   backup: Backup a database from the PostgreSQL container
 #   stop: Stop PostgreSQL container
 #   resume: Resume PostgreSQL container
@@ -93,12 +94,37 @@ psqladm() {
             echo "$PASSWORD" > "$CREDENTIALS_DIR/$1.pass"
 
             # Create the database and set the owner
-            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "CREATE DATABASE $1;"
-            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "CREATE USER $2 WITH PASSWORD '$PASSWORD';"
-            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "ALTER DATABASE $1 OWNER TO $2;"
+            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "CREATE DATABASE $1;" && \
+            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "CREATE USER $2 WITH PASSWORD '$PASSWORD';" && \
+            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "ALTER DATABASE $1 OWNER TO $2;" && \
             docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $1 TO $2;"
         else
-            echo "PostgreSQL container is not running, please use 'postgresql start' to start the container"
+            echo "PostgreSQL container is not running, please use 'postgresql resume' to start the container"
+            return 1
+        fi
+    }
+
+    # Remove a database from the PostgreSQL container
+    remove_database() {
+        # Check if container is running
+        if docker ps --filter "name=$POSTGRESQL_CONTAINER_NAME" --filter "status=running" | grep -q $POSTGRESQL_CONTAINER_NAME; then
+            echo "Removing database $1 from PostgreSQL container"
+            # Check if database is provided
+            if [ -z "$1" ]; then
+                echo "Usage: postgresql remove_database <database>"
+                return 2
+            fi
+
+            # Check if credentials directory exists
+            mkdir -p "$CREDENTIALS_DIR"
+
+            # Drop the database and user
+            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "DROP DATABASE $1;" && \
+            docker exec $POSTGRESQL_CONTAINER_NAME psql -U postgres -c "DROP USER $(cat $CREDENTIALS_DIR/$1.user);"
+            # Remove credentials files
+            rm -f "$CREDENTIALS_DIR/$1.user" "$CREDENTIALS_DIR/$1.pass"
+        else
+            echo "PostgreSQL container is not running, please use 'postgresql resume' to start the container"
             return 1
         fi
     }
@@ -131,11 +157,14 @@ psqladm() {
             # Check PostgreSQL status inside the container
             if docker exec $POSTGRESQL_CONTAINER_NAME pg_isready -U postgres; then
                 echo "Healthy"
+                return 0
             else
                 echo "Not healthy"
+                return 1
             fi
         else
             echo "Stopped"
+            return 1
         fi
     }
 
