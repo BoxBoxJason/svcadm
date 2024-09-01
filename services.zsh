@@ -45,6 +45,10 @@ export NGINX_CONTAINER_NAME="nginx"
 export MINIO=$SERVICES/minio
 export MINIO_CONTAINER_NAME="minio"
 
+# ClamAV environment variables
+export CLAMAV=$SERVICES/clamav
+export CLAMAV_CONTAINER_NAME="clamav"
+
 generate_password() {
     cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1
 }

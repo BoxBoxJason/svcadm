@@ -292,6 +292,54 @@ minioadm remove_bucket mybucket
 minioadm cleanup
 ```
 
+### clamadm
+
+**clamadm** is a wrapper script designed to manage a ClamAV container, which is an open-source antivirus engine for detecting malware and viruses. The script automates various tasks such as setting up the ClamAV environment, scanning directories for malware, and handling the container lifecycle.
+
+#### Commands
+- **`setup`**: Initializes and starts the ClamAV container. It sets up the clamav configuration and starts the container.
+- **`scan <file>`**: Scans the specified file for malware using the ClamAV engine. The scan results are displayed in the terminal.
+- **`stop`**: Stops the running ClamAV container without removing any data or configuration. This command is useful for temporarily halting operations.
+- **`resume`**: Resumes the ClamAV container from a stopped state, allowing you to continue operations without data loss.
+- **`cleanup`**: Removes the ClamAV container and all associated configurations. This action is irreversible and will delete all stored data.
+- **`status`**: Checks and displays the status of the ClamAV container, indicating whether it is running, stopped, or not present.
+
+#### Environment Variables
+
+To use the `clamadm` script, several environment variables need to be configured:
+
+- **`CLAMAV`**: This environment variable should point to the path where ClamAV-related data and configurations are stored. This path is used for storing configurations and data.
+- **`CLAMAV_CONTAINER_NAME`**: Specifies the name of the ClamAV Docker container. This name is used to identify and manage the container.
+- **`SERVICES_NETWORK`**: Defines the Docker network in which the ClamAV container will be placed. This network should be preconfigured or set up during the `setup` command.
+
+#### Customization
+- **ClamAV Version**: To change the ClamAV version or image, edit the respective `IMAGE_NAME` variable in the script.
+
+#### Dependencies
+- **Docker**: Ensure Docker is installed and running on your machine. The script uses Docker commands to manage the ClamAV container and related resources.
+
+#### Example Usage
+```bash
+# Set up and start the ClamAV container
+clamadm setup
+
+# Scan the specified file for malware
+clamadm scan /path/to/file
+
+# Stop the ClamAV container
+clamadm stop
+
+# Resume the ClamAV container
+clamadm resume
+
+# Check the status of the ClamAV container
+clamadm status
+
+# Clean up the ClamAV container and all resources
+clamadm cleanup
+```
+
+
 ## License
 This Software is under the Unlicense License. Meaning you can do whatever you want with it.  
 See the [LICENSE](LICENSE) file for details.
