@@ -45,6 +45,7 @@ nginxadm() {
     local HTTP_PORT="80"
     local HTTPS_PORT="443"
     local SERVICES=("sonaradm" "minioadm")
+    local TCP_SERVICES=("clamadm")
     local NGINX_CONF="$NGINX/conf"
     local KEY_PATH="/etc/ssl/private/$(hostname).key"
     local CERT_PATH="/etc/ssl/certs/$(hostname).crt"
@@ -59,29 +60,47 @@ nginxadm() {
             echo "nginx container is already running"
             return 1
         fi
-        echo "server {
-    listen 80;
-    server_name $(hostname);
-    return 301 https://\$host\$request_uri;
+        cat <<EOF > $NGINX_CONF/nginx.conf
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
 }
 
-server {
-    listen 443 ssl;
-    server_name $(hostname);
-    ssl_certificate $CERT_PATH;
-    ssl_certificate_key $KEY_PATH;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-" > $NGINX_CONF/nginx.conf
-        for service in "${SERVICES[@]}"; do
-            $service nginxconf >> $NGINX_CONF/nginx.conf
-        done
+http {
+    server {
+        listen 80;
+        server_name $(hostname);
+        return 301 https://\$host\$request_uri;
+    }
 
-        echo "}" >> $NGINX_CONF/nginx.conf
+    server {
+        listen 443 ssl;
+        server_name $(hostname);
+        ssl_certificate $CERT_PATH;
+        ssl_certificate_key $KEY_PATH;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+    $(for service in "${SERVICES[@]}"; do
+        $service nginxconf
+    done)
+    }
+}
+
+stream {
+$(for service in "${TCP_SERVICES[@]}"; do
+    $service nginxconf
+done)
+}
+EOF
         # Start the nginx container
         docker run -d --name $NGINX_CONTAINER_NAME \
             --network $SERVICES_NETWORK \
-            -v $NGINX_CONF/nginx.conf:/etc/nginx/conf.d/default.conf \
+            -v $NGINX_CONF/nginx.conf:/etc/nginx/nginx.conf \
             -v $CERT_PATH:$CERT_PATH \
             -v $KEY_PATH:$KEY_PATH \
             -p $HTTP_PORT:80 \

@@ -139,13 +139,14 @@ sonaradm() {
     # Print the nginx configuration for SonarQube
     nginxconf() {
         cat <<EOF
-    location /sonarqube {
-        proxy_pass http://$SONARQUBE_CONTAINER_NAME:9000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
+        # SonarQube
+        location /sonarqube {
+            proxy_pass http://$SONARQUBE_CONTAINER_NAME:9000;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
 EOF
     }
 

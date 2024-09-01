@@ -175,38 +175,37 @@ minioadm() {
     # Print the nginx configuration for MinIO
     nginxconf() {
         cat <<EOF
-    # MinIO Web UI
-    location /minio/ {
-        rewrite ^/minio/(.*) /\$1 break;
+        # MinIO Web UI
+        location /minio/ {
+            rewrite ^/minio/(.*) /\$1 break;
 
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header X-NginX-Proxy true;
+            proxy_set_header Host \$http_host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_set_header X-NginX-Proxy true;
 
-        proxy_set_header Accept-Encoding "";
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
+            proxy_set_header Accept-Encoding "";
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
 
-        proxy_buffering off;
+            proxy_buffering off;
 
-        proxy_pass http://$MINIO_CONTAINER_NAME:9001/;
-    }
+            proxy_pass http://$MINIO_CONTAINER_NAME:9001/;
+        }
+        # MinIO API
+        location /minio-api/ {
+            proxy_pass http://$MINIO_CONTAINER_NAME:9000;
+            proxy_set_header Host \$http_host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
 
-    # MinIO API
-    location /minio-api/ {
-        proxy_pass http://$MINIO_CONTAINER_NAME:9000;
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
 
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-
-        proxy_buffering off;
-    }
+            proxy_buffering off;
+        }
 EOF
     }
 
