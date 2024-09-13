@@ -74,12 +74,14 @@ events {
 http {
     server {
         listen 80;
+        listen [::]:80;
         server_name $(hostname);
         return 301 https://\$host\$request_uri;
     }
 
     server {
         listen 443 ssl;
+        listen [::]:443 ssl;
         server_name $(hostname);
         ssl_certificate $CERT_PATH;
         ssl_certificate_key $KEY_PATH;
@@ -131,8 +133,10 @@ EOF
     status() {
         if docker ps --filter "name=$NGINX_CONTAINER_NAME" | grep -q $NGINX_CONTAINER_NAME; then
             echo "Healthy"
+            return 0
         else
             echo "Stopped"
+            return 1
         fi
     }
 

@@ -1,5 +1,10 @@
 # svcadm CHANGELOG
 
+## [Clamav] - 2024-09-03
+
+### Added
+- Added Clamav service
+
 ## [Minio] - 2024-08-30
 
 ### Added

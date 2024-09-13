@@ -30,7 +30,7 @@ safeguard() {
     local WATCH_DIRS=("$HOME/Downloads" "$HOME/Documents" "$HOME/Music" "$HOME/Pictures" "$HOME/Videos")
     local LOG_DIR="/var/log/scan"
     local LOG_FILE="$LOG_DIR/safeguard.log"
-    local QUANRANTINE_DIR="$HOME/.quantantine"
+    local QUARANTINE_DIR="$HOME/.quarantine"
 
     # Start the monitoring and securing all of the directories
     start() {
@@ -40,7 +40,7 @@ safeguard() {
             echo "Could not run freshclam, please try using 'sudo freshclam'"
         fi
         # Create the quarantine directory if it does not exist
-        mkdir -p "$QUANRANTINE_DIR"
+        mkdir -p "$QUARANTINE_DIR"
         # Create the log directory if it does not exist and check write permissions
         if [ ! -d "$LOG_DIR" ]; then
             mkdir -p "$LOG_DIR"
@@ -79,7 +79,7 @@ safeguard() {
                 fi
             done
             echo "$(date +"%Y-%m-%d %H:%M:%S"): Safeguarding stopped" | tee -a "$LOG_FILE"
-            rm -rf "$QUANRANTINE_DIR"
+            rm -rf "$QUARANTINE_DIR"
             echo "$(date +"%Y-%m-%d %H:%M:%S"): Quarantine directory removed" | tee -a "$LOG_FILE"
         else
             echo "Safeguard is not running"
@@ -112,9 +112,9 @@ safeguard() {
             inotifywait -m -e create --format '%w%f' "$1" | while read NEWFILE
             do
                 NOTICE_TIME=$(date +"%Y-%m-%d %H:%M:%S")
-                clamscan --move="$QUANRANTINE_DIR" "$NEWFILE"
-                if [ $? -ne 0 ]; then
-                    MESSAGE="Warning: $NEWFILE might be infected and has been moved to $QUANRANTINE_DIR !"
+                clamscan --move="$QUARANTINE_DIR" "$NEWFILE"
+                if [ $? -eq 1 ]; then
+                    MESSAGE="Warning: $NEWFILE might be infected and has been moved to $QUARANTINE_DIR !"
                     echo "$NOTICE_TIME: $MESSAGE" | tee -a "$LOG_FILE"
                     notify-send "MALAWARE SUSPICION ALERT" "$MESSAGE" -u critical -i dialog-warning -t 30000 -a "ClamAV" -c "important"
                 else

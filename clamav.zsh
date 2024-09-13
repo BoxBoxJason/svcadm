@@ -92,8 +92,10 @@ EOF
     status() {
         if docker ps --filter "name=$CLAMAV_CONTAINER_NAME" | grep -q $CLAMAV_CONTAINER_NAME; then
             echo "Healthy"
+            return 0
         else
             echo "Stopped"
+            return 1
         fi
     }
 

@@ -158,7 +158,7 @@ psqladm() {
                 echo "Healthy"
                 return 0
             else
-                echo "Not healthy"
+                echo "Stopped"
                 return 1
             fi
         else

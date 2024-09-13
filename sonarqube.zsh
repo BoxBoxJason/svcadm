@@ -123,16 +123,12 @@ sonaradm() {
 
     # Check SonarQube container status
     status() {
-        local SONARQUBE_URL="http://localhost:9000"
         if docker ps --filter "name=$SONARQUBE_CONTAINER_NAME" --filter "status=running" | grep -q $SONARQUBE_CONTAINER_NAME; then
-            STATUS=$(curl -s "$SONARQUBE_URL/api/system/health" | jq -r .health)
-            if [ "$STATUS" = "GREEN" ]; then
-                echo "Healthy"
-            else
-                echo "$STATUS"
-            fi
+            echo "Healthy"
+            return 0
         else
             echo "Stopped"
+            return 1
         fi
     }
 
