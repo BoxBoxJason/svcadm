@@ -1,0 +1,211 @@
+# Configure general settings for the services
+general:
+  # Set the services directory, path must be absolute
+  directory: "${HOME}/services"
+
+  # Configure the access control for the services
+  access:
+    # Path to the logins file (will be encrypted if encryption is enabled)
+    # Path must be either absolute or relative to the services directory
+    logins: "./access/logins"
+    # Configure the encryption for the access control
+    encryption:
+      enabled: false
+      # Path to the encryption key file
+      # Path must be either absolute or relative to the services directory
+      key: "./access/key"
+      # Path to the encryption salt file
+      # Path must be either absolute or relative to the services directory
+      salt: "./access/salt"
+
+  # Configure the container runtime operator
+  operator:
+    # Can use "docker" or "podman"
+    name: "podman"
+    # Services network configuration
+    network:
+      driver: "bridge" # Not recommended to change this value
+      name: "services" # Container network name
+
+# Configure the services to be managed
+services:
+  - name: postgresql
+    # PostgreSQL must be enabled for the following services to work: gitlab, mattermost, sonarqube, vaultwarden
+    enabled: true
+    image:
+      repository: "postgres"
+      tag: "15"
+    container:
+      name: "postgresql"
+      # Configure the forwarded ports for postgresql, values must be "host:container" format
+      ports: []
+      restart: "always"
+    persistence:
+      enabled: true
+      # Configure the volume name for postgresql
+      volumes:
+        postgresql_data: "/var/lib/postgresql/data"
+    backup:
+      enabled: true
+      frequency: "daily"
+      retention: 7
+      # Backup location, path must be either absolute or relative to the services directory
+      location: "./postgresql/backup"
+
+  - name: sonarqube
+    enabled: true
+    image:
+      repository: "sonarqube"
+      tag: "10.6.0-community"
+    container:
+      name: "sonarqube"
+      # Configure the forwarded ports for sonarqube, values must be "host:container" format OR "nginx" to use the nginx service
+      ports:
+        - "nginx"
+      restart: "always"
+    persistence:
+      enabled: true
+      # Configure the volumes for sonarqube, leave empty to disable unwanted volumes
+      volumes:
+        sonarqube_data: "/opt/sonarqube/data"
+        sonarqube_extensions: "/opt/sonarqube/extensions"
+        sonarqube_logs: "/opt/sonarqube/logs"
+    backup:
+      enabled: true
+      frequency: "daily"
+      retention: 7
+      location: "./sonarqube/backup"
+
+  - name: minio
+    enabled: true
+    image:
+      repository: "minio/minio"
+      tag: "latest"
+    container:
+      name: "minio"
+      # Configure the forwarded ports for minio, values must be "host:container" format OR "nginx" to use the nginx service
+      ports:
+        - "nginx"
+      restart: "always"
+    persistence:
+      enabled: true
+      # Configure the volume name for minio
+      volumes:
+        minio_data: "/data"
+    backup:
+      enabled: true
+      frequency: "daily"
+      retention: 7
+      location: "./minio/backup"
+    env:
+      # Configure the environment variables for minio
+      MINIO_ROOT_USER: "svcadm"
+      # Leave empty to generate a random password
+      MINIO_ROOT_PASSWORD: "svcadm"
+
+  - name: nginx
+    enabled: true
+    image:
+      repository: "nginx"
+      tag: "stable-alpine"
+    container:
+      name: "nginx"
+      # Configure the forwarded ports for nginx, values must be "host:container" format
+      ports:
+        - "80:80"
+        - "443:443"
+      restart: "always"
+
+  - name: clamav
+    enabled: false
+    image:
+      repository: "clamav/clamav"
+      tag: "latest"
+    container:
+      name: "clamav"
+      # Configure the forwarded ports for clamav, values must be "host:container" format OR "nginx" to use the nginx service
+      ports:
+        - "nginx"
+      restart: "always"
+
+  - name: gitlab
+    enabled: true
+    image:
+      repository: "gitlab/gitlab-ce"
+      tag: "latest"
+    container:
+      name: "gitlab"
+      # Configure the forwarded ports for gitlab, values must be "host:container" format OR "nginx" to use the nginx service
+      ports:
+        - "nginx"
+      restart: "always"
+    persistence:
+      enabled: true
+      # Configure the volumes for gitlab, leave empty to disable unwanted volumes
+      volumes:
+        gitlab_config: "/etc/gitlab"
+        gitlab_data: "/var/opt/gitlab"
+        gitlab_logs: "/var/log/gitlab"
+    backup:
+      enabled: true
+      frequency: "daily"
+      retention: 7
+      location: "./gitlab/backup"
+
+  - name: mattermost
+    enabled: true
+    image:
+      repository: "mattermost/mattermost-team-edition"
+      tag: "latest"
+    container:
+      name: "mattermost"
+      # Configure the forwarded ports for mattermost, values must be "host:container" format OR "nginx" to use the nginx service
+      ports:
+        - "nginx"
+      restart: "always"
+    persistence:
+      enabled: true
+      # Configure the volumes for mattermost, leave empty to disable unwanted volumes
+      volumes:
+        mattermost_data: "/mattermost/data"
+        mattermost_config: "/mattermost/config"
+        mattermost_plugins: "/mattermost/plugins"
+    backup:
+      enabled: true
+      frequency: "daily"
+      retention: 7
+      location: "./mattermost/backup"
+
+  - name: trivy
+    enabled: true
+    image:
+      repository: "aquasec/trivy"
+      tag: "latest"
+    container:
+      name: "trivy"
+      # Configure the forwarded ports for trivy, values must be "host:container" format OR "nginx" to use the nginx service
+      ports:
+        - "nginx"
+      restart: "always"
+
+  - name: vaultwarden
+    enabled: true
+    image:
+      repository: "vaultwarden/server"
+      tag: "latest-alpine"
+    container:
+      name: "vaultwarden"
+      # Configure the forwarded ports for vaultwarden, values must be "host:container" format OR "nginx" to use the nginx service
+      ports:
+        - "nginx"
+      restart: "always"
+    persistence:
+      enabled: true
+      # Configure the volumes for vaultwarden, leave empty to disable unwanted volumes
+      volumes:
+        vaultwarden_data: "/data"
+    backup:
+      enabled: true
+      frequency: "daily"
+      retention: 7
+      location: "./vaultwarden/backup"

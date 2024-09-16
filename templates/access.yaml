@@ -1,0 +1,4 @@
+admins:
+  - username: "svcadm"
+    password: "svcadm"
+users:
