@@ -5,4 +5,6 @@ import (
 	"os"
 )
 
-var SVCADM_HOME = fmt.Sprintf("%s/.svcadm", os.Getenv("HOME"))
+var (
+	SVCADM_HOME = fmt.Sprintf("%s/.svcadm", os.Getenv("HOME"))
+)
