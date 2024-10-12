@@ -1,4 +1,5 @@
 admins:
   - username: "svcadm"
-    password: "svcadm"
+    password: "svcadm123"
+    email: "svcadm@svcadm.com"
 users:
