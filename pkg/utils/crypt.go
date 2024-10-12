@@ -8,12 +8,14 @@ import (
 
 // GenerateRandomPassword generates a random password of the specified length
 func GenerateRandomPassword(length int) (string, error) {
-	if length < 4 {
-		return "", errors.New("password length must be at least 4")
+	if length < 1 {
+		return "", errors.New("password length must be at least 1")
 	}
-	password := make([]byte, length/4)
+	password := make([]byte, length)
 	if _, err := rand.Read(password); err != nil {
 		return "", err
 	}
-	return string(base64.StdEncoding.EncodeToString(password)), nil
+	password_str := base64.URLEncoding.EncodeToString(password)
+
+	return password_str[:length], nil
 }
