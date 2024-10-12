@@ -2,58 +2,85 @@ package psqladm
 
 import (
 	"errors"
+	"fmt"
+	"path"
 	"time"
 
 	"github.com/boxboxjason/svcadm/internal/config"
+	"github.com/boxboxjason/svcadm/internal/services/svcadm"
+	"github.com/boxboxjason/svcadm/pkg/logger"
 	"github.com/boxboxjason/svcadm/pkg/utils"
+	"github.com/boxboxjason/svcadm/pkg/utils/containerutils"
 )
 
-// CreateUser creates a new user in the postgres cluster
-func CreateUser(container_operator string, container_name string, username string, password string) error {
-	return utils.RunContainerCommand(container_operator, container_name, "psql -U postgres -c \"CREATE USER "+username+" WITH PASSWORD '"+password+"';\"")
+type PsqlAdm struct {
+	Service config.Service
 }
 
-// CreateSuperUser creates a new superuser in the postgres cluster
-func CreateSuperUser(container_operator string, container_name string, username string, password string) error {
-	return utils.RunContainerCommand(container_operator, container_name, "psql -U postgres -c \"CREATE USER "+username+" WITH PASSWORD '"+password+"' SUPERUSER;\"")
+// CreateUser creates a new user in the postgres cluster
+func (p *PsqlAdm) CreateUser(user *config.User) error {
+	err := containerutils.RunContainerCommand(p.Service.Container.Name, "psql", "-U", "postgres", "-c", fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s';", user.Username, user.Password))
+	if err != nil {
+		logger.Error("psqladm: Failed to create the user "+user.Username, err)
+	} else {
+		logger.Info("psqladm: Successfully created the user " + user.Username)
+	}
+	return err
+}
+
+// CreateAdminUser creates a new superuser in the postgres cluster
+func (p *PsqlAdm) CreateAdminUser(user *config.User) error {
+	err := containerutils.RunContainerCommand(p.Service.Container.Name, "psql", "-U", "postgres", "-c", fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s' SUPERUSER;", user.Username, user.Password))
+	if err != nil {
+		logger.Error("psqladm: Failed to create the user "+user.Username, err)
+	} else {
+		logger.Info("psqladm: Successfully created the user " + user.Username)
+	}
+	return err
 }
 
 // CreateDatabase creates a new database with the specified owner
-func CreateDatabase(container_operator string, container_name string, database string, owner string) error {
-	err := utils.RunContainerCommand(container_operator, container_name, "psql -U postgres -c \"CREATE DATABASE "+database+" OWNER "+owner+";\"")
+func (p *PsqlAdm) CreateDatabase(database string, owner string) error {
+	err := containerutils.RunContainerCommand(p.Service.Container.Name, "psql", "-U", "postgres", "-c", fmt.Sprintf("CREATE DATABASE %s OWNER %s;", database, owner))
 	if err != nil {
+		logger.Error("Failed to create the database ", database, err)
 		return err
 	}
-	return GrantUserDatabasePrivileges(container_operator, container_name, database, owner)
+	return p.GrantUserDatabasePrivileges(database, owner)
 }
 
 // GrantUserDatabasePrivileges grants all privileges on a database to a user
-func GrantUserDatabasePrivileges(container_operator string, container_name string, database string, username string) error {
-	return utils.RunContainerCommand(container_operator, container_name, "psql -U postgres -c \"GRANT ALL PRIVILEGES ON DATABASE "+database+" TO "+username+";\"")
+func (p *PsqlAdm) GrantUserDatabasePrivileges(database string, username string) error {
+	return containerutils.RunContainerCommand(p.Service.Container.Name, "psql", "-U", "postgres", "-c", fmt.Sprintf("GRANT ALL PRIVILEGES ON DATABASE %s TO %s;", database, username))
 }
 
 // DeleteDatabase deletes a database
-func DeleteDatabase(container_operator string, container_name string, database string) error {
-	return utils.RunContainerCommand(container_operator, container_name, "psql -U postgres -c \"DROP DATABASE "+database+";\"")
+func (p *PsqlAdm) DeleteDatabase(database string) error {
+	return containerutils.RunContainerCommand(p.Service.Container.Name, "psql", "-U", "postgres", "-c", fmt.Sprintf("DROP DATABASE %s;", database))
 }
 
 // DeleteUser deletes a user
-func DeleteUser(container_operator string, container_name string, username string) error {
-	return utils.RunContainerCommand(container_operator, container_name, "psql -U postgres -c \"DROP USER "+username+";\"")
+func (p *PsqlAdm) DeleteUser(username string) error {
+	return containerutils.RunContainerCommand(p.Service.Container.Name, "psql", "-U", "postgres", "-c", fmt.Sprintf("DROP USER %s;", username))
 }
 
-// BackupDatabase creates a backup of a database
-func BackupDatabase(container_operator string, container_name string, database string, backup_name string) error {
-	if database == "*" {
-		return utils.RunContainerCommand(container_operator, container_name, "pg_dumpall -U postgres > "+backup_name)
-	}
-	return utils.RunContainerCommand(container_operator, container_name, "pg_dump -U postgres "+database+" > "+backup_name)
+// Backup creates a backup of the postgres cluster
+func (p *PsqlAdm) Backup(backup_path string) error {
+	backup_name := path.Join(backup_path, utils.GenerateDatetimeString()+".sql")
+	return containerutils.RunContainerCommand(p.Service.Container.Name, "pg_dumpall", "-c", "-U", "postgres", "> "+backup_name)
 }
 
-// PreInitPostgreSQL generates a random password for the postgres user
-func PreInitPostgreSQL() (map[string]string, map[string]string, error) {
+// BackupDatabase creates a backup of a specific database
+func (p *PsqlAdm) BackupDatabase(database string, backup_path string) error {
+	backup_name := path.Join(backup_path, database+"_"+utils.GenerateDatetimeString()+".sql")
+	return containerutils.RunContainerCommand(p.Service.Container.Name, "pg_dump", "-U", "postgres", database, "> "+backup_name)
+}
+
+// PreInit generates a random password for the postgres user
+func (p *PsqlAdm) PreInit() (map[string]string, map[string]string, error) {
 	password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
+		logger.Error("Failed to generate a random password", err)
 		return nil, nil, err
 	}
 	extended_env := map[string]string{
@@ -62,39 +89,49 @@ func PreInitPostgreSQL() (map[string]string, map[string]string, error) {
 	return extended_env, nil, nil
 }
 
-// PostInitPostgreSQL creates the superusers and users in the postgres cluster
-func PostInitPostgreSQL(container_operator string, container_name string, users *config.Users) error {
-	err := waitForPostgres(container_operator, container_name)
+// PostInit creates the superusers and users in the postgres cluster
+func (p *PsqlAdm) PostInit(env_variables map[string]string) error {
+	err := p.WaitFor()
 	if err != nil {
 		return err
 	}
 
-	for _, user := range users.Admins {
-		err := CreateSuperUser(container_operator, container_name, user.Username, user.Password)
-		if err != nil {
-			return err
-		}
-	}
-	for _, user := range users.Users {
-		err := CreateUser(container_operator, container_name, user.Username, user.Password)
-		if err != nil {
-			return err
-		}
-	}
+	svcadm.CreateUsers(p, "psqladm")
 	return nil
 }
 
-// waitForPostgres waits for the postgres container to be ready
-func waitForPostgres(container_operator string, container_name string) error {
+// WaitFor waits for the postgres container to be ready
+func (p *PsqlAdm) WaitFor() error {
 	max_retries := 30
 	const retry_interval = 5
 	for max_retries > 0 {
-		err := utils.RunContainerCommand(container_operator, container_name, "pg_isready")
+		err := containerutils.RunContainerCommand(p.Service.Container.Name, "pg_isready")
 		if err == nil {
+			logger.Info("postgres container is ready")
 			return nil
 		}
+		logger.Debug("postgres container is not ready, retrying in", retry_interval, "seconds")
 		max_retries--
 		time.Sleep(retry_interval * time.Second)
 	}
-	return errors.New("postgres container is not ready")
+	return errors.New("timeout exceeded, postgres container is not ready")
+}
+
+// GenerateNginxConf generates the nginx configuration for the postgres cluster
+func (p *PsqlAdm) GenerateNginxConf() string {
+	return ""
+}
+
+// InitArgs returns the additional arguments / command required to start the postgres container
+func (p *PsqlAdm) InitArgs() []string {
+	return []string{}
+}
+
+// GetService returns the service configuration
+func (p *PsqlAdm) GetService() config.Service {
+	return p.Service
+}
+
+func (p *PsqlAdm) ContainerArgs() []string {
+	return []string{}
 }
