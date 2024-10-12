@@ -4,26 +4,13 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+
+	"github.com/boxboxjason/svcadm/pkg/logger"
 )
 
-// CheckConfiguration checks the configuration file at the specified path, adds default values to empty fields
-func CheckConfiguration(config_path string) (Configuration, Users, error) {
-	config, users, err := ParseConfiguration(config_path)
-	if err != nil {
-		return Configuration{}, Users{}, err
-	}
-
-	// Check if the services in the configuration file are valid
-	err = validateServicesNames(&config)
-	if err != nil {
-		return Configuration{}, Users{}, err
-	}
-
-	return config, users, nil
-}
-
-// validateServicesNames ensures that the services in the configuration file are valid
-func validateServicesNames(config *Configuration) error {
+// ValidateConfiguration ensures that the services in the configuration file are valid
+func ValidateConfiguration() {
+	config := GetConfiguration()
 	valid_services := retrieveValidServices()
 
 	all_errors := make([]string, 0)
@@ -33,8 +20,10 @@ func validateServicesNames(config *Configuration) error {
 
 	// Check if the services are valid
 	for _, service := range config.Services {
+		logger.Debug(fmt.Sprintf("validating service: %s", service.Name))
 		if _, ok := valid_services[service.Name]; !ok {
 			all_errors = append(all_errors, fmt.Sprintf("invalid service found: %s", service.Name))
+		} else {
 			all_errors = append(all_errors, validateContainerContent(&service.Container)...)
 			all_errors = append(all_errors, validatePersistenceContent(&service.Persistence)...)
 			all_errors = append(all_errors, validateBackupContent(&service.Backup)...)
@@ -42,9 +31,9 @@ func validateServicesNames(config *Configuration) error {
 	}
 
 	if len(all_errors) > 0 {
-		return fmt.Errorf("errors found in configuration file:\n%s", all_errors)
+		logger.Fatal(fmt.Sprintf("errors found in configuration file:\n%s", all_errors))
 	}
-	return nil
+	logger.Debug("configuration is valid")
 }
 
 // validateContainerContent ensures that the container content in the configuration file is valid
@@ -74,19 +63,17 @@ func validateContainerContent(container *Container) []string {
 		errors = append(errors, fmt.Sprintf("invalid container name: %s", container.Name))
 	}
 
-	// Check if the ports are valid (if specified), must be either in format "port:port" OR "nginx"
+	// Check if the ports are valid (if specified), are positive integers, lower than 65536
 	if len(container.Ports) > 0 {
 		for _, port := range container.Ports {
-			if port != "nginx" {
-				re, err = regexp.Compile(`^\d+:\d+$`)
-				if err != nil {
-					errors = append(errors, fmt.Sprintf("error compiling regex: %s", err))
-				}
-				if !re.MatchString(port) {
-					errors = append(errors, fmt.Sprintf("invalid port format for container %s: %s", container.Name, port))
-				}
+			if port < 0 || port > 65535 {
+				errors = append(errors, fmt.Sprintf("invalid port for container %s: %d", container.Name, port))
+			}
+			if container.Ports[port] < 0 || container.Ports[port] > 65535 {
+				errors = append(errors, fmt.Sprintf("invalid port mapping for container %s: %d", container.Name, container.Ports[port]))
 			}
 		}
+
 	}
 
 	return errors
@@ -107,7 +94,9 @@ func validatePersistenceContent(persistence *Persistence) []string {
 	}
 	for volume := range persistence.Volumes {
 		if !re.MatchString(volume) {
-			errors = append(errors, fmt.Sprintf("invalid volume name: %s", volume))
+			if _, err := os.Stat(volume); err != nil {
+				errors = append(errors, fmt.Sprintf("invalid volume name: %s", volume))
+			}
 		}
 	}
 
@@ -190,4 +179,55 @@ func validateAccessContent(access *Access) []string {
 	}
 
 	return errors
+}
+
+// ValidateUsers ensures that the users in the users file are valid
+func ValidateUsers() {
+	users := GetUsers()
+
+	valid_count := 0
+
+	// Check if the users are valid
+	for _, user := range users.Users {
+		if !validateUsername(user.Username) {
+			fmt.Println("invalid username: " + user.Username)
+		}
+		if !validatePassword(user.Password) {
+			fmt.Println("invalid password for user " + user.Username)
+		}
+		valid_count++
+	}
+
+	// Check if the admin users are valid
+	for _, user := range users.Admins {
+		if !validateUsername(user.Username) {
+			fmt.Println("invalid username: " + user.Username)
+		}
+		if !validatePassword(user.Password) {
+			fmt.Println("invalid password for user " + user.Username)
+		}
+		valid_count++
+	}
+
+	if valid_count == 0 {
+		logger.Fatal("no (valid) users found in users file")
+	}
+	logger.Debug("users are valid")
+}
+
+// validateUsername ensures that the username uses alphanumeric characters, underscores and hyphens, the username must be between 3 and 20 characters
+func validateUsername(username string) bool {
+	re, err := regexp.Compile(`^[a-zA-Z0-9_-]{3,20}$`)
+	if err != nil {
+		return false
+	}
+	return re.MatchString(username)
+}
+
+// validatePassword ensures that the password is between 6 and 32 characters long, with no spaces at the beginning or end
+func validatePassword(password string) bool {
+	if len(password) < 6 || len(password) > 32 {
+		return false
+	}
+	return password[0] != ' ' && password[len(password)-1] != ' '
 }

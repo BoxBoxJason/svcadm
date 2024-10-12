@@ -27,14 +27,14 @@ func DefaultConfiguration() (Configuration, error) {
 // Retrieve the list of valid services from the github repository
 func retrieveValidServices() map[string]bool {
 	return map[string]bool{
-		"nginx":       true,
-		"gitlab":      true,
-		"mattermost":  true,
-		"sonarqube":   true,
-		"postgresql":  true,
-		"clamav":      true,
-		"trivy":       true,
-		"minio":       true,
-		"vaultwarden": true,
+		"nginx":      true,
+		"gitlab":     true,
+		"mattermost": true,
+		"sonarqube":  true,
+		"postgresql": true,
+		"clamav":     true,
+		"trivy":      true,
+		"minio":      true,
+		"vault":      true,
 	}
 }
