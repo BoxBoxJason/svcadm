@@ -11,7 +11,8 @@
 ### Added
 - GitLab service
 - Mattermost service
-- VaultWarden service
+- Vault service
+- Trivy service
 - Users are specified in a file and are created automatically on the first run
 
 ## [Clamav] - 2024-09-03
