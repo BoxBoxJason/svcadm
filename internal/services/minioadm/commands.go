@@ -6,9 +6,9 @@ import (
 
 	"github.com/boxboxjason/svcadm/internal/config"
 	"github.com/boxboxjason/svcadm/internal/services/svcadm"
+	"github.com/boxboxjason/svcadm/pkg/containerutils"
 	"github.com/boxboxjason/svcadm/pkg/logger"
 	"github.com/boxboxjason/svcadm/pkg/utils"
-	"github.com/boxboxjason/svcadm/pkg/utils/containerutils"
 )
 
 type MinioAdm struct {

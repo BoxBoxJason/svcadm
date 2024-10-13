@@ -10,9 +10,9 @@ import (
 	"github.com/boxboxjason/svcadm/internal/config"
 	"github.com/boxboxjason/svcadm/internal/services/svcadm"
 	"github.com/boxboxjason/svcadm/internal/static"
+	"github.com/boxboxjason/svcadm/pkg/containerutils"
+	"github.com/boxboxjason/svcadm/pkg/fileutils"
 	"github.com/boxboxjason/svcadm/pkg/logger"
-	"github.com/boxboxjason/svcadm/pkg/utils/containerutils"
-	"github.com/boxboxjason/svcadm/pkg/utils/fileutils"
 )
 
 var (

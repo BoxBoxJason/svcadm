@@ -107,18 +107,8 @@ func StartContainer(container string, image string, volumes map[string]string, p
 	}
 
 	operator := GetContainerOperator()
-	cmd := exec.Command(operator, args...)
 
-	// TODO: REMOVE THIS DEBUG PRINTER
-	fmt.Printf("Running command: %v\n", cmd)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Command error: %v\n", err)
-		fmt.Printf("Command output: %s\n", string(output))
-		return err
-	}
-
-	return nil
+	return exec.Command(operator, args...).Run()
 }
 
 // StopContainer stops a container using the container operator
@@ -187,7 +177,15 @@ func RemoveVolume(volume_name string) error {
 func RunContainerCommand(container string, command ...string) error {
 	operator := GetContainerOperator()
 	command = append([]string{"exec", container}, command...)
-	return exec.Command(operator, command...).Run()
+	cmd := exec.Command(operator, command...)
+
+	// TODO: REMOVE THIS DEBUG PRINTER
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("Command error: %v\n", err)
+		fmt.Printf("Command output: %s\n", string(output))
+	}
+	return cmd.Run()
 }
 
 // CopyContainerFile copies runs a copy command from a container towards the host machine

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/boxboxjason/svcadm/internal/config"
-	"github.com/boxboxjason/svcadm/pkg/utils/containerutils"
+	"github.com/boxboxjason/svcadm/pkg/containerutils"
 )
 
 type TrivyAdm struct {

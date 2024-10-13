@@ -14,11 +14,11 @@ import (
 	"github.com/boxboxjason/svcadm/internal/services/trivyadm"
 	"github.com/boxboxjason/svcadm/internal/services/vaultadm"
 	"github.com/boxboxjason/svcadm/internal/static"
+	"github.com/boxboxjason/svcadm/pkg/containerutils"
+	"github.com/boxboxjason/svcadm/pkg/fileutils"
+	"github.com/boxboxjason/svcadm/pkg/formatutils"
 	"github.com/boxboxjason/svcadm/pkg/logger"
 	"github.com/boxboxjason/svcadm/pkg/utils"
-	"github.com/boxboxjason/svcadm/pkg/utils/containerutils"
-	"github.com/boxboxjason/svcadm/pkg/utils/fileutils"
-	"github.com/boxboxjason/svcadm/pkg/utils/formatutils"
 )
 
 var (
