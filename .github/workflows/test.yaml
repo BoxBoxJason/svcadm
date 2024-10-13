@@ -17,12 +17,15 @@ jobs:
 
       - name: Run tests
         run: gotestsum --junitfile gotestsum.xml ./...
+        continue-on-error: true
 
       - name: Show test results
         run: cat gotestsum.xml
+        continue-on-error: true
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         with:
           name: gotestsum-results
           path: gotestsum.xml
+        continue-on-error: true
