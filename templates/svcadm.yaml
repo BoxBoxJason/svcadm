@@ -181,6 +181,8 @@ services:
         mattermost_data: "/mattermost/data"
         mattermost_config: "/mattermost/config"
         mattermost_plugins: "/mattermost/plugins"
+        mattermost_logs: "/mattermost/logs"
+        mattermost_client_plugins: "/mattermost/client/plugins"
     backup:
       enabled: true
       frequency: "daily"
