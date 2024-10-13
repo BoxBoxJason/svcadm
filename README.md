@@ -1,28 +1,58 @@
 # svcadm
 
-svcadm is a command-line utility for managing services on unix and MacOS systems. It is a wrapper based on zsh script that you can use to setup various development environments services. Said services include:
-- databases (postgresql)
-- code quality tools (sonarqube)
-- storage (minio)
-- web servers (nginx)
-- integrity scan (trivy, clamav)
+svcadm is a command-line utility for deploying and managing development team services on a local machine. It is designed to simplify the process of setting up and managing development environments by providing a simple and intuitive interface for starting, stopping, and monitoring services.
+- Source code hosting & CI/CD (GitLab)
+- Secret management (Hashicorp Vault)
+- Team communication (Mattermost)
+- Databases (PostgreSQL)
+- Code quality tools (SonarQube)
+- Artifact repository (Minio)
+- Integrity scans & malware protection (ClamAV, Trivy)
+- Reverse proxy (Nginx)
 - and more to come...
 
 ## Table of Contents
-- [Installation](#installation)
 - [Usage](#usage)
+  - [svcadm](#svcadm)
   - [safeguard](#safeguard)
 - [Customization](#customization)
 - [License](#license)
 
-## Installation
-
-1. Make sure you have `zsh` installed on your system. If not, you can install it using the package manager of your choice.
-2. Clone the repository to your local machine `git clone https://github.com/boxboxjason/svcadm.git`
-3. Navigate to the `svcadm` directory `cd svcadm`
-4. Source all of the scripts in your `.zshrc` file by adding `source /path/to/svcadm/*.zsh` to your `.zshrc` file. If you use `oh-my-zsh`, you can simply move the scripts to the `.oh-my-zsh/custom` directory.
-
 ## Usage
+
+### svcadm
+
+**svcadm** is a command-line utility for deploying and managing development team services on a local machine. It provides a simple and intuitive interface for starting, stopping, and monitoring services. The `svcadm` utility is designed to simplify the process of setting up and managing development environments by providing a unified interface for managing various services.
+
+The configuration of svcadm is done through a configuration file (which by default is) located at `~/.svcadm/svcadm.yaml`. This file contains the configuration for the services that can be managed by `svcadm`. The configuration file is in YAML format and contains all the necessary information to manage the services automatically.
+
+#### Setup
+1. Download the `svcadm` binary corresponding to your operating system from the [releases page](https://github.com/BoxBoxJason/svcadm/releases)
+2. Ensure that the `svcadm` binary is executable by running `chmod +x svcadm`
+3. Move the `svcadm` binary to a directory in your `PATH` to make it accessible from anywhere on your system.
+4. Check the available commands by running `svcadm --help`
+
+#### Getting Started
+1. Generate the default configuration file by running `svcadm config default`, this will download the default configuration file from the internet and save it to `~/.svcadm/svcadm.yaml`
+2. Edit the configuration file to match your environment. You can enable or disable services as needed.
+3. Start the services by running `svcadm setup`
+4. Check the status of the services by running `svcadm status`
+5. Stop the services by running `svcadm stop`
+
+#### Commands
+- `config <command>`: Manage the configuration file
+  - `default`: Download the default configuration file
+  - `edit`: Open the configuration file in the default editor
+  - `generate`: Generates a new configuration file by prompting the user for the necessary information
+  - `show`: Display the contents of the configuration file
+  - `validate`: Validate the configuration file for syntax errors and invalid / improperly configured services
+- `setup`: Start the services defined in the configuration file
+- `status <services>`: Check the status of the services
+- `stop <services>`: Stop the services specified in the command
+- `logs <services>`: Display the logs for the specified services
+- `restart <services>`: Restart the specified services
+- `backup <services>`: Backup the data for the specified services
+- `cleanup <services>`: Cleanup the data for the specified services
 
 ### safeguard
 
