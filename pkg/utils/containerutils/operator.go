@@ -187,15 +187,7 @@ func RemoveVolume(volume_name string) error {
 func RunContainerCommand(container string, command ...string) error {
 	operator := GetContainerOperator()
 	command = append([]string{"exec", container}, command...)
-	cmd := exec.Command(operator, command...)
-
-	// TODO: REMOVE THIS DEBUG PRINTER
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Command error: %v\n", err)
-		fmt.Printf("Command output: %s\n", string(output))
-	}
-	return err
+	return exec.Command(operator, command...).Run()
 }
 
 // CopyContainerFile copies runs a copy command from a container towards the host machine
@@ -266,5 +258,5 @@ func ResumeContainer(container string) error {
 // GetContainerEnvVariable gets an environment variable from a container
 func GetContainerEnvVariable(container string, variable string) (string, error) {
 	output, err := RunContainerCommandWithOutput(container, "printenv", variable)
-	return string(output), err
+	return strings.Trim(string(output), "\n"), err
 }

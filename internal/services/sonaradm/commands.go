@@ -80,7 +80,7 @@ func (s *SonarAdm) PostInit(env_variables map[string]string) error {
 	}
 
 	// Change the password of the default admin user
-	err = containerutils.RunContainerCommand(s.Service.Container.Name, "curl", "-kfsL", "-X", "POST", "http://localhost:9000/sonarqube/api/users/change_password", "-u", "admin:admin", "-d", "login=admin", "-d", "password="+env_variables["ADMIN_PASSWORD"], "-d", "previousPassword=admin")
+	err = containerutils.RunContainerCommand(s.Service.Container.Name, "curl", "-kfL", "-X", "POST", "http://localhost:9000/sonarqube/api/users/change_password", "-u", "admin:admin", "-d", "login=admin", "-d", "password="+env_variables["ADMIN_PASSWORD"], "-d", "previousPassword=admin")
 	if err != nil {
 		logger.Error("sonaradm: Failed to change the password of the default admin user", err)
 		return err
@@ -119,7 +119,7 @@ func (s *SonarAdm) CreateUser(user *config.User) error {
 	if err != nil {
 		return err
 	}
-	return containerutils.RunContainerCommand(s.Service.Container.Name, "curl", "-kfsL", "-X", "POST", "-u", "admin:"+admin_password,
+	return containerutils.RunContainerCommand(s.Service.Container.Name, "curl", "-kfL", "-X", "POST", "-u", "admin:"+admin_password,
 		"-H", "Content-Type: application/json",
 		"-d", fmt.Sprintf(`{"login":"%s","name":"%s","password":"%s"}`, user.Username, user.Username, user.Password),
 		"http://localhost:9000/sonarqube/api/v2/users-management/users")
@@ -135,6 +135,7 @@ func (s *SonarAdm) CreateAdminUser(user *config.User) error {
 	// Create the user and retrieve its ID
 	err = s.CreateUser(user)
 	if err != nil {
+		logger.Error("sonaradm: failed to create the user", err)
 		return err
 	}
 
