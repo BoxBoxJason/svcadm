@@ -262,3 +262,9 @@ func ResumeContainer(container string) error {
 	cmd := exec.Command(operator, "start", container)
 	return cmd.Run()
 }
+
+// GetContainerEnvVariable gets an environment variable from a container
+func GetContainerEnvVariable(container string, variable string) (string, error) {
+	output, err := RunContainerCommandWithOutput(container, "printenv", variable)
+	return string(output), err
+}

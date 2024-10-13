@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/boxboxjason/svcadm/internal/config"
@@ -227,14 +226,5 @@ func (s *SonarAdm) ContainerArgs() []string {
 }
 
 func (s *SonarAdm) retrieveAdminPassword() (string, error) {
-	response, err := containerutils.RunContainerCommandWithOutput(s.Service.Container.Name, "env")
-	if err != nil {
-		return "", err
-	}
-	for _, line := range strings.Split(string(response), "\n") {
-		if strings.HasPrefix(line, "ADMIN_PASSWORD=") {
-			return strings.TrimPrefix(line, "ADMIN_PASSWORD="), nil
-		}
-	}
-	return "", errors.New("sonaradm: could not find the admin password in the container environment")
+	return containerutils.GetContainerEnvVariable(s.Service.Container.Name, "ADMIN_PASSWORD")
 }
