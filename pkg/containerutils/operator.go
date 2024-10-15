@@ -67,8 +67,7 @@ func CheckOperatorInstalled() bool {
 // CheckOperatorRunning checks if the container operator is running
 func CheckOperatorRunning() bool {
 	operator := GetContainerOperator()
-	cmd := exec.Command(operator, "info")
-	return cmd.Run() == nil
+	return exec.Command(operator, "info").Run() == nil
 }
 
 // StartContainer starts a container using the container operator with the specified parameters
@@ -114,15 +113,13 @@ func StartContainer(container string, image string, volumes map[string]string, p
 // StopContainer stops a container using the container operator
 func StopContainer(container string) error {
 	operator := GetContainerOperator()
-	cmd := exec.Command(operator, "stop", container)
-	return cmd.Run()
+	return exec.Command(operator, "stop", container).Run()
 }
 
 // RemoveContainer removes a container using the container operator
 func RemoveContainer(container string) error {
 	operator := GetContainerOperator()
-	cmd := exec.Command(operator, "rm", "-f", container)
-	return cmd.Run()
+	return exec.Command(operator, "rm", "-f", container).Run()
 }
 
 // FetchContainerStatus fetches the status of a container using the container operator
@@ -162,8 +159,7 @@ func FetchContainerLogs(container string) (string, error) {
 // CreateVolume creates a volume using the container operator
 func CreateVolume(volume_name string) error {
 	operator := GetContainerOperator()
-	cmd := exec.Command(operator, "volume", "create", volume_name)
-	return cmd.Run()
+	return exec.Command(operator, "volume", "create", volume_name).Run()
 }
 
 // RemoveVolume removes a volume using the container operator
@@ -185,14 +181,13 @@ func RunContainerCommand(container string, command ...string) error {
 		fmt.Printf("Command error: %v\n", err)
 		fmt.Printf("Command output: %s\n", string(output))
 	}
-	return cmd.Run()
+	return err
 }
 
 // CopyContainerFile copies runs a copy command from a container towards the host machine
 func CopyContainerFile(container string, source string, destination string) error {
 	operator := GetContainerOperator()
-	cmd := exec.Command(operator, "cp", fmt.Sprintf("%s:%s", container, source), destination)
-	return cmd.Run()
+	return exec.Command(operator, "cp", fmt.Sprintf("%s:%s", container, source), destination).Run()
 }
 
 // RunContainerCommandWithOutput runs a command in an existing container using the container operator and returns the output as a string
@@ -213,28 +208,27 @@ func RunContainerCommandWithOutput(container string, command ...string) ([]byte,
 // CheckVolumeExists checks if a container operator volume exists
 func CheckVolumeExists(volume string) bool {
 	operator := GetContainerOperator()
-	return exec.Command(operator, "volume", "inspect", volume) == nil
+	return exec.Command(operator, "volume", "inspect", volume).Run() == nil
 }
 
 // CheckContainerExists checks if a container exists
 func CheckContainerExists(container string) bool {
 	operator := GetContainerOperator()
-	return exec.Command(operator, "inspect", container) == nil
+	return exec.Command(operator, "inspect", container).Run() == nil
 }
 
-// CheckNetworkExists checks if a container network exists
-func CheckNetworkExists(network string) bool {
+// ContainerNetworkExists checks if a container network exists
+func ContainerNetworkExists(network string) bool {
 	operator := GetContainerOperator()
 	return exec.Command(operator, "network", "inspect", network).Run() == nil
 }
 
 // CreateNetwork creates a container network
 func CreateNetwork(network string, driver string) error {
-	if !CheckNetworkExists(network) {
+	if !ContainerNetworkExists(network) {
 		operator := GetContainerOperator()
 		logger.Debug("Creating network ", network)
-		cmd := exec.Command(operator, "network", "create", "--driver", driver, network)
-		return cmd.Run()
+		return exec.Command(operator, "network", "create", "--driver", driver, network).Run()
 	}
 	return nil
 }
@@ -242,15 +236,13 @@ func CreateNetwork(network string, driver string) error {
 // RemoveNetwork removes a container network
 func RemoveNetwork(network string) error {
 	operator := GetContainerOperator()
-	cmd := exec.Command(operator, "network", "rm", network)
-	return cmd.Run()
+	return exec.Command(operator, "network", "rm", network).Run()
 }
 
 // ResumeContainer resumes a container using the container operator
 func ResumeContainer(container string) error {
 	operator := GetContainerOperator()
-	cmd := exec.Command(operator, "start", container)
-	return cmd.Run()
+	return exec.Command(operator, "start", container).Run()
 }
 
 // GetContainerEnvVariable gets an environment variable from a container
