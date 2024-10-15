@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	MATTERMOST_DB_USER = "mattermost"
-	MATTERMOST_DB_NAME = "mattermost"
+	MATTERMOST_DB_USER       = "mattermost"
+	MATTERMOST_DB_NAME       = "mattermost"
+	MATTERMOSTADM            = "mattermostadm"
+	MATTERMOSTADM_LOG_PREFIX = "mattermostadm:"
 )
 
 type MattermostAdm struct {
@@ -33,7 +35,7 @@ func (m *MattermostAdm) CreateAdminUser(user *config.User) error {
 	return containerutils.RunContainerCommand(m.Service.Container.Name, "mmctl", "user", "create", "--email", user.Email, "--username", user.Username, "--password", user.Password, "--system-admin", "--local")
 }
 
-// PreInit sets up the mattermost database and environment variables
+// PreInit sets up the mattermost database and environment variables, err
 func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, error) {
 	// Create the mattermost database
 	db_password, err := utils.GenerateRandomPassword(32)
@@ -45,17 +47,17 @@ func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, error) 
 
 	err = p.CreateUser(&config.User{Username: MATTERMOST_DB_USER, Password: db_password})
 	if err != nil {
-		logger.Error("Failed to create the mattermost PostgreSQL user", err)
+		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to create the mattermost PostgreSQL user")
 		return nil, nil, err
 	} else {
-		logger.Info("Successfully created the mattermost PostgreSQL user")
+		logger.Info(MATTERMOSTADM_LOG_PREFIX, "successfully created the mattermost PostgreSQL user")
 	}
 	err = p.CreateDatabase(MATTERMOST_DB_NAME, MATTERMOST_DB_USER)
 	if err != nil {
-		logger.Error("Failed to create the mattermost PostgreSQL database", err)
+		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to create the mattermost PostgreSQL database")
 		return nil, nil, err
 	} else {
-		logger.Info("Successfully created the mattermost PostgreSQL database")
+		logger.Info(MATTERMOSTADM_LOG_PREFIX, "successfully created the mattermost PostgreSQL database")
 	}
 
 	extended_env := map[string]string{
@@ -77,7 +79,7 @@ func (m *MattermostAdm) PostInit(env_variables map[string]string) error {
 		logger.Error(err)
 		return err
 	}
-	svcadm.CreateUsers(m, "mattermostadm")
+	svcadm.CreateUsers(m, MATTERMOSTADM)
 
 	return nil
 }
@@ -90,20 +92,20 @@ func (m *MattermostAdm) Backup(backup_path string) error {
 	backup_name := utils.GenerateDatetimeString()
 	err := p.BackupDatabase(MATTERMOST_DB_NAME, path.Join(m.Service.Backup.Location, backup_name+".sql"))
 	if err != nil {
-		logger.Error("Failed to backup the mattermost PostgreSQL database", err)
+		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to backup the mattermost PostgreSQL database")
 		return err
 	} else {
-		logger.Info("Successfully backed up the mattermost PostgreSQL database to " + path.Join(m.Service.Backup.Location, backup_name+".sql"))
+		logger.Info(MATTERMOSTADM_LOG_PREFIX, "successfully backed up the mattermost PostgreSQL database to "+path.Join(m.Service.Backup.Location, backup_name+".sql"))
 	}
 
 	err = containerutils.RunContainerCommand(m.Service.Container.Name, "mattermost", "export", "bulk", "--all", "--destination", path.Join("tmp", backup_name+".zip"))
 	if err != nil {
-		logger.Error("Failed to export the mattermost data", err)
+		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to export the mattermost data")
 		return err
 	}
 	err = containerutils.CopyContainerFile(m.Service.Container.Name, path.Join("tmp", backup_name+".zip"), backup_path)
 	if err != nil {
-		logger.Error("Failed to copy the mattermost backup onto the host machine", err)
+		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to copy the mattermost backup onto the host machine")
 		return err
 	}
 	return containerutils.RunContainerCommand(m.Service.Container.Name, "rm", "-f", path.Join("tmp", backup_name+".zip"))
@@ -138,11 +140,11 @@ func (m *MattermostAdm) WaitFor() error {
 			var result map[string]string
 			err = json.Unmarshal(response, &result)
 			if err == nil && result["status"] == "OK" {
-				logger.Info("mattermost container is ready")
+				logger.Info(MATTERMOSTADM_LOG_PREFIX, "mattermost container is ready")
 				return nil
 			}
 		}
-		logger.Debug("mattermost container is not ready, retrying in", retry_interval, "seconds")
+		logger.Debug(MATTERMOSTADM_LOG_PREFIX, "mattermost container is not ready, retrying in", retry_interval, "seconds")
 		max_retries--
 		time.Sleep(retry_interval * time.Second)
 	}
@@ -156,4 +158,16 @@ func (m *MattermostAdm) GetService() config.Service {
 
 func (m *MattermostAdm) ContainerArgs() []string {
 	return []string{}
+}
+
+func (m *MattermostAdm) GetServiceName() string {
+	return m.Service.Name
+}
+
+func (m *MattermostAdm) GetServiceAdmName() string {
+	return MATTERMOSTADM
+}
+
+func (m *MattermostAdm) Cleanup() ([]string, []string) {
+	return []string{}, []string{}
 }

@@ -16,14 +16,9 @@ type ServiceAdm interface {
 	InitArgs() []string
 	GetService() config.Service
 	ContainerArgs() []string
-}
-
-func Cleanup(service_adm ServiceAdm) (string, []string, []string) {
-	service := service_adm.GetService()
-	volumes := make([]string, 0)
-	files := make([]string, 0)
-
-	return service.Container.Name, volumes, files
+	GetServiceName() string
+	GetServiceAdmName() string
+	Cleanup() ([]string, []string)
 }
 
 func CreateUsers(service_adm ServiceAdm, service_adm_slug string) {

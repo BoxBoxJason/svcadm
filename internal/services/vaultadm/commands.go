@@ -15,6 +15,11 @@ import (
 	"github.com/boxboxjason/svcadm/pkg/logger"
 )
 
+const (
+	VAULTADM            = "vaultadm"
+	VAULTADM_LOG_PREFIX = "vaultadm:"
+)
+
 var (
 	VAULT_PATH      = path.Join(static.SVCADM_HOME, "vaultadm")
 	ROOT_TOKEN_PATH = path.Join(VAULT_PATH, ".root_token")
@@ -37,10 +42,7 @@ func (v *VaultAdm) CreateAdminUser(user *config.User) error {
 
 // PreInit sets up the vault database and environment variables
 func (v *VaultAdm) PreInit() (map[string]string, map[string]string, error) {
-	additional_env := make(map[string]string)
-	additional_volumes := make(map[string]string)
-
-	return additional_env, additional_volumes, nil
+	return nil, nil, nil
 }
 
 // PostInit Waits until the vault service is up and running, inits and unseals the vault, creates the users
@@ -54,7 +56,7 @@ func (v *VaultAdm) PostInit(env_variables map[string]string) error {
 	init_command := []string{"vault", "operator", "init", "-address=http://localhost:8200", "-key-shares=5", fmt.Sprintf("-key-threshold=%d", key_threshold)}
 	output, err := containerutils.RunContainerCommandWithOutput(v.Service.Container.Name, init_command...)
 	if err != nil {
-		logger.Error("vaultadm: could not initialize the vault")
+		logger.Error(VAULTADM_LOG_PREFIX, "could not initialize the vault")
 		return err
 	}
 	fmt.Println(string(output))
@@ -84,23 +86,23 @@ func (v *VaultAdm) PostInit(env_variables map[string]string) error {
 	for _, key := range unseal_keys[:key_threshold] {
 		err = containerutils.RunContainerCommand(v.Service.Container.Name, append(unseal_command, key)...)
 		if err != nil {
-			logger.Error("vaultadm: could not unseal the vault")
+			logger.Error(VAULTADM_LOG_PREFIX, "could not unseal the vault")
 			return err
 		}
 	}
-	logger.Debug("vaultadm: vault unsealed")
+	logger.Info(VAULTADM_LOG_PREFIX, "vault unsealed")
 
 	// Login with the root token
 	err = containerutils.RunContainerCommand(v.Service.Container.Name, "vault", "login", "-address=http://localhost:8200", root_token)
 	if err != nil {
-		logger.Error("vaultadm: could not login with the root token")
+		logger.Error(VAULTADM_LOG_PREFIX, "could not login with the root token")
 		return err
 	}
 
 	// Enable the userpass auth method
 	err = containerutils.RunContainerCommand(v.Service.Container.Name, "vault", "auth", "enable", "-address=http://localhost:8200", "userpass")
 	if err != nil {
-		logger.Error("vaultadm: could not enable the userpass auth method")
+		logger.Error(VAULTADM_LOG_PREFIX, "could not enable the userpass auth method")
 		return err
 	}
 
@@ -112,20 +114,20 @@ path "/secret/*" {
 	capabilities = ["create", "read", "update", "delete", "list"]
 }' > admin.hcl`)
 	if err != nil {
-		logger.Error("vaultadm: could not create the admin policy file")
+		logger.Error(VAULTADM_LOG_PREFIX, "could not create the admin policy file")
 		return err
 	}
 	err = containerutils.RunContainerCommand(v.Service.Container.Name, "vault", "policy", "write", "-address=http://localhost:8200", "admin", "admin.hcl")
 	if err != nil {
-		logger.Error("vaultadm: could not create the admin policy")
+		logger.Error(VAULTADM_LOG_PREFIX, "could not create the admin policy")
 		return err
 	} else {
-		logger.Debug("vaultadm: admin policy created")
+		logger.Debug(VAULTADM_LOG_PREFIX, "admin policy created")
 	}
 
 	containerutils.RunContainerCommand(v.Service.Container.Name, "rm", "-f", "admin.hcl")
 
-	svcadm.CreateUsers(v, "vaultadm")
+	svcadm.CreateUsers(v, VAULTADM)
 	return nil
 }
 
@@ -137,10 +139,10 @@ func (v *VaultAdm) WaitFor() error {
 	for max_retries > 0 {
 		output, err := containerutils.RunContainerCommandWithOutput(v.Service.Container.Name, healthcheck_command...)
 		if err == nil || strings.Contains(string(output), "Build Date") {
-			logger.Info("vault container is ready")
+			logger.Info(VAULTADM_LOG_PREFIX, "vault container is ready")
 			return nil
 		}
-		logger.Debug("vault container not ready yet, retrying in", retry_interval, "seconds")
+		logger.Debug(VAULTADM_LOG_PREFIX, "vault container not ready yet, retrying in", retry_interval, "seconds")
 		time.Sleep(retry_interval * time.Second)
 		max_retries--
 	}
@@ -187,9 +189,9 @@ func (v *VaultAdm) ContainerArgs() []string {
 func saveAdminToken(admin_token string) {
 	err := fileutils.WriteToFile(ROOT_TOKEN_PATH, admin_token)
 	if err != nil {
-		logger.Error("vaultadm: could not save the root token, consider saving it manually at", ROOT_TOKEN_PATH)
+		logger.Error(VAULTADM_LOG_PREFIX, "could not save the root token, consider saving it manually at", ROOT_TOKEN_PATH)
 	} else {
-		logger.Info("vaultadm: root token saved at", ROOT_TOKEN_PATH)
+		logger.Info(VAULTADM_LOG_PREFIX, "root token saved at", ROOT_TOKEN_PATH)
 	}
 }
 
@@ -197,9 +199,9 @@ func saveAdminToken(admin_token string) {
 func saveSealKey(seal_key string, index int) {
 	err := fileutils.WriteToFile(fmt.Sprintf(SEAL_KEY_PATH, index), seal_key)
 	if err != nil {
-		logger.Error("vaultadm: could not save the seal key, consider saving it manually at", fmt.Sprintf(SEAL_KEY_PATH, index))
+		logger.Error(VAULTADM_LOG_PREFIX, "could not save the seal key, consider saving it manually at", fmt.Sprintf(SEAL_KEY_PATH, index))
 	} else {
-		logger.Info("vaultadm: seal key saved at", fmt.Sprintf(SEAL_KEY_PATH, index))
+		logger.Info(VAULTADM_LOG_PREFIX, "seal key saved at", fmt.Sprintf(SEAL_KEY_PATH, index))
 	}
 }
 
@@ -211,4 +213,16 @@ func getAdminToken() (string, error) {
 // getSealKey returns the seal key from a file
 func getSealKey(index int) (string, error) {
 	return fileutils.GetFileContent(fmt.Sprintf(SEAL_KEY_PATH, index))
+}
+
+func (v *VaultAdm) GetServiceName() string {
+	return v.Service.Name
+}
+
+func (v *VaultAdm) GetServiceAdmName() string {
+	return VAULTADM
+}
+
+func (v *VaultAdm) Cleanup() ([]string, []string) {
+	return []string{}, []string{VAULT_PATH}
 }

@@ -11,6 +11,11 @@ import (
 	"github.com/boxboxjason/svcadm/pkg/utils"
 )
 
+const (
+	MINIOADM            = "minioadm"
+	MINIOADM_LOG_PREFIX = "minioadm:"
+)
+
 type MinioAdm struct {
 	Service config.Service
 }
@@ -23,7 +28,7 @@ func (m *MinioAdm) CreateUser(user *config.User) error {
 	}
 	err = containerutils.RunContainerCommand(m.Service.Container.Name, "mc", "admin", "policy", "attach", m.Service.Container.Name, "readwrite", "--user", user.Username)
 	if err != nil {
-		logger.Error("minioadm: Failed to attach the readwrite policy to the user "+user.Username, err)
+		logger.Error(MINIOADM_LOG_PREFIX, "failed to attach the readwrite policy to the user "+user.Username)
 	}
 	return err
 }
@@ -36,7 +41,7 @@ func (m *MinioAdm) CreateAdminUser(user *config.User) error {
 	}
 	err = containerutils.RunContainerCommand(m.Service.Container.Name, "mc", "admin", "policy", "attach", m.Service.Container.Name, "consoleAdmin", "--user", user.Username)
 	if err != nil {
-		logger.Error("minioadm: Failed to attach the admin policy to the user "+user.Username, err)
+		logger.Error(MINIOADM_LOG_PREFIX, "failed to attach the admin policy to the user "+user.Username)
 	}
 	return err
 }
@@ -46,12 +51,12 @@ func (m *MinioAdm) BackupBucket(bucket_name string, backup_path string) error {
 	backup_name := path.Join(backup_path, bucket_name+".tar.xz")
 	err := containerutils.RunContainerCommand(m.Service.Container.Name, "tar", "-cJf", "/tmp/"+bucket_name+".tar.xz", "/data/"+bucket_name)
 	if err != nil {
-		logger.Error("Failed to backup the minio bucket", err)
+		logger.Error(MINIOADM_LOG_PREFIX, "failed to backup the minio bucket")
 		return err
 	}
 	err = containerutils.CopyContainerFile(m.Service.Container.Name, fmt.Sprintf("/tmp/%s.tar.xz", bucket_name), backup_name)
 	if err != nil {
-		logger.Error("Failed to copy the minio bucket backup on the host machine", err)
+		logger.Error(MINIOADM_LOG_PREFIX, "failed to copy the minio bucket backup on the host machine")
 		return err
 	}
 	return containerutils.RunContainerCommand(m.Service.Container.Name, "rm", "-f", fmt.Sprintf("/tmp/%s.tar.xz", bucket_name))
@@ -61,15 +66,15 @@ func (m *MinioAdm) BackupBucket(bucket_name string, backup_path string) error {
 func (m *MinioAdm) Backup(backup_name string) error {
 	err := containerutils.RunContainerCommand(m.Service.Container.Name, "tar", "-cJf", "/tmp/all.tar.xz", "/data")
 	if err != nil {
-		logger.Error("Failed to backup the minio data", err)
+		logger.Error(MINIOADM_LOG_PREFIX, "failed to backup the minio data")
 		return err
 	}
 	err = containerutils.CopyContainerFile(m.Service.Container.Name, "/tmp/all.tar.xz", backup_name)
 	if err != nil {
-		logger.Error("Failed to copy the minio data backup", err)
+		logger.Error(MINIOADM_LOG_PREFIX, "failed to copy the minio data backup")
 		return err
 	} else {
-		logger.Info("Successfully backed up the minio data to " + backup_name)
+		logger.Info(MINIOADM_LOG_PREFIX, "successfully backed up the minio data to "+backup_name)
 	}
 	return containerutils.RunContainerCommand(m.Service.Container.Name, "rm", "-f", "/tmp/all.tar.xz")
 }
@@ -99,7 +104,7 @@ func (m *MinioAdm) PreInit() (map[string]string, map[string]string, error) {
 	if root_password == "" {
 		root_password, err = utils.GenerateRandomPassword(32)
 		if err != nil {
-			logger.Error("Failed to generate a random password", err)
+			logger.Error(MINIOADM_LOG_PREFIX, "failed to generate a random password")
 			return nil, nil, err
 		}
 	}
@@ -129,7 +134,7 @@ func (m *MinioAdm) PostInit(env_variables map[string]string) error {
 		return err
 	}
 
-	svcadm.CreateUsers(m, "minioadm")
+	svcadm.CreateUsers(m, MINIOADM)
 
 	return nil
 }
@@ -186,4 +191,16 @@ func (m *MinioAdm) GetService() config.Service {
 
 func (m *MinioAdm) ContainerArgs() []string {
 	return []string{}
+}
+
+func (m *MinioAdm) GetServiceName() string {
+	return m.Service.Name
+}
+
+func (m *MinioAdm) GetServiceAdmName() string {
+	return MINIOADM
+}
+
+func (m *MinioAdm) Cleanup() ([]string, []string) {
+	return []string{}, []string{}
 }

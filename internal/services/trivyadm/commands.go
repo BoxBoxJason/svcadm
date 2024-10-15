@@ -7,6 +7,11 @@ import (
 	"github.com/boxboxjason/svcadm/pkg/containerutils"
 )
 
+const (
+	TRIVYADM            = "trivyadm"
+	TRIVYADM_LOG_PREFIX = "trivyadm:"
+)
+
 type TrivyAdm struct {
 	Service config.Service
 }
@@ -63,4 +68,16 @@ func (t *TrivyAdm) GetService() config.Service {
 
 func (t *TrivyAdm) ContainerArgs() []string {
 	return []string{}
+}
+
+func (t *TrivyAdm) GetServiceName() string {
+	return t.Service.Name
+}
+
+func (t *TrivyAdm) GetServiceAdmName() string {
+	return TRIVYADM
+}
+
+func (t *TrivyAdm) Cleanup() ([]string, []string) {
+	return []string{}, []string{}
 }

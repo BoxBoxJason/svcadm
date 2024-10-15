@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	GITLAB_DB_USER = "gitlab"
-	GITLAB_DB_NAME = "gitlab"
+	GITLAB_DB_USER       = "gitlab"
+	GITLAB_DB_NAME       = "gitlab"
+	GITLABADM            = "gitlabadm"
+	GITLABADM_LOG_PREFIX = "gitlabadm:"
 )
 
 type GitLabAdm struct {
@@ -40,24 +42,24 @@ func (g *GitLabAdm) Backup(backup_path string) error {
 	backup_name := utils.GenerateDatetimeString()
 	err := p.BackupDatabase(GITLAB_DB_NAME, path.Join(g.Service.Backup.Location, backup_name+".sql"))
 	if err != nil {
-		logger.Error("Failed to backup the GitLab PostgreSQL database", err)
+		logger.Error(GITLABADM_LOG_PREFIX, "Failed to backup the GitLab PostgreSQL database")
 	} else {
-		logger.Info("Successfully backed up the GitLab PostgreSQL database to " + path.Join(g.Service.Backup.Location, backup_name+".sql"))
+		logger.Info(GITLABADM_LOG_PREFIX, "Successfully backed up the GitLab PostgreSQL database to "+path.Join(g.Service.Backup.Location, backup_name+".sql"))
 	}
 
 	err = containerutils.RunContainerCommand(g.Service.Container.Name, "gitlab-backup", "create", "BACKUP="+backup_name)
 	if err != nil {
-		logger.Error("Failed to create the GitLab backup", err)
+		logger.Error(GITLABADM_LOG_PREFIX, "Failed to create the GitLab backup")
 		return err
 	}
 	container_backup_path := fmt.Sprintf("/var/opt/gitlab/backups/%s_gitlab_backup.tar", backup_name)
 	err = containerutils.CopyContainerFile(g.Service.Container.Name, container_backup_path, backup_path)
 	if err != nil {
-		logger.Error("Failed to copy the GitLab backup onto the host machine", err)
+		logger.Error(GITLABADM_LOG_PREFIX, "Failed to copy the GitLab backup onto the host machine")
 		return err
 	}
 
-	logger.Info("Successfully backed up the GitLab data to " + backup_path)
+	logger.Info(GITLABADM_LOG_PREFIX, "Successfully backed up the GitLab data to "+backup_path)
 
 	return containerutils.RunContainerCommand(g.Service.Container.Name, "rm", "-f", container_backup_path)
 }
@@ -82,7 +84,7 @@ func (g *GitLabAdm) PostInit(env_variables map[string]string) error {
 		return err
 	}
 
-	svcadm.CreateUsers(g, "gitlabadm")
+	svcadm.CreateUsers(g, GITLABADM)
 
 	return nil
 }
@@ -99,23 +101,23 @@ func (g *GitLabAdm) PreInit() (map[string]string, map[string]string, error) {
 	// Set up the postgres user
 	postgres_password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
-		logger.Error("Failed to generate a random password for the PostgreSQL user", err)
+		logger.Error(GITLABADM_LOG_PREFIX, "failed to generate a random password for the PostgreSQL user")
 		return nil, nil, err
 	}
 	err = p.CreateUser(&config.User{Username: GITLAB_DB_USER, Password: postgres_password})
 	if err != nil {
-		logger.Error("Failed to create the GitLab PostgreSQL user", err)
+		logger.Error(GITLABADM_LOG_PREFIX, "failed to create the GitLab PostgreSQL user")
 		return nil, nil, err
 	} else {
-		logger.Info("Successfully created the GitLab PostgreSQL user")
+		logger.Info(GITLABADM_LOG_PREFIX, "successfully created the GitLab PostgreSQL user")
 	}
 	// Set up the gitlab database
 	err = p.CreateDatabase(GITLAB_DB_NAME, GITLAB_DB_USER)
 	if err != nil {
-		logger.Error("Failed to create the GitLab PostgreSQL database", err)
+		logger.Error(GITLABADM_LOG_PREFIX, "failed to create the GitLab PostgreSQL database")
 		return nil, nil, err
 	} else {
-		logger.Info("Successfully created the GitLab PostgreSQL database")
+		logger.Info(GITLABADM_LOG_PREFIX, "successfully created the GitLab PostgreSQL database")
 	}
 
 	external_url := ""
@@ -138,10 +140,10 @@ func (g *GitLabAdm) WaitFor() error {
 	for max_retries > 0 {
 		err := containerutils.RunContainerCommand(g.Service.Container.Name, "gitlab-healthcheck")
 		if err == nil {
-			logger.Info("gitlab container is ready")
+			logger.Info(GITLABADM_LOG_PREFIX, "gitlab container is ready")
 			return nil
 		}
-		logger.Info("gitlab container is not ready yet, retrying in", retry_interval, " seconds")
+		logger.Info(GITLABADM_LOG_PREFIX, "gitlab container is not ready yet, retrying in", retry_interval, " seconds")
 		max_retries--
 		time.Sleep(retry_interval * time.Second)
 	}
@@ -160,4 +162,16 @@ func (g *GitLabAdm) GetService() config.Service {
 
 func (g *GitLabAdm) ContainerArgs() []string {
 	return []string{}
+}
+
+func (g *GitLabAdm) GetServiceName() string {
+	return g.Service.Name
+}
+
+func (g *GitLabAdm) GetServiceAdmName() string {
+	return GITLABADM
+}
+
+func (g *GitLabAdm) Cleanup() ([]string, []string) {
+	return []string{}, []string{}
 }

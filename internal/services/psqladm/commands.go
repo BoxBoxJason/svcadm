@@ -13,6 +13,11 @@ import (
 	"github.com/boxboxjason/svcadm/pkg/utils"
 )
 
+const (
+	PSQLADM            = "psqladm"
+	PSQLADM_LOG_PREFIX = "psqladm:"
+)
+
 type PsqlAdm struct {
 	Service config.Service
 }
@@ -21,9 +26,9 @@ type PsqlAdm struct {
 func (p *PsqlAdm) CreateUser(user *config.User) error {
 	err := containerutils.RunContainerCommand(p.Service.Container.Name, "psql", "-U", "postgres", "-c", fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s';", user.Username, user.Password))
 	if err != nil {
-		logger.Error("psqladm: Failed to create the user "+user.Username, err)
+		logger.Error(PSQLADM_LOG_PREFIX, "failed to create the user "+user.Username)
 	} else {
-		logger.Info("psqladm: Successfully created the user " + user.Username)
+		logger.Info(PSQLADM_LOG_PREFIX, "successfully created the user "+user.Username)
 	}
 	return err
 }
@@ -32,9 +37,9 @@ func (p *PsqlAdm) CreateUser(user *config.User) error {
 func (p *PsqlAdm) CreateAdminUser(user *config.User) error {
 	err := containerutils.RunContainerCommand(p.Service.Container.Name, "psql", "-U", "postgres", "-c", fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s' SUPERUSER;", user.Username, user.Password))
 	if err != nil {
-		logger.Error("psqladm: Failed to create the user "+user.Username, err)
+		logger.Error(PSQLADM_LOG_PREFIX, "failed to create the user "+user.Username)
 	} else {
-		logger.Info("psqladm: Successfully created the user " + user.Username)
+		logger.Info(PSQLADM_LOG_PREFIX, "successfully created the user "+user.Username)
 	}
 	return err
 }
@@ -43,7 +48,7 @@ func (p *PsqlAdm) CreateAdminUser(user *config.User) error {
 func (p *PsqlAdm) CreateDatabase(database string, owner string) error {
 	err := containerutils.RunContainerCommand(p.Service.Container.Name, "psql", "-U", "postgres", "-c", fmt.Sprintf("CREATE DATABASE %s OWNER %s;", database, owner))
 	if err != nil {
-		logger.Error("Failed to create the database ", database, err)
+		logger.Error(PSQLADM_LOG_PREFIX, "failed to create the database ", database)
 		return err
 	}
 	return p.GrantUserDatabasePrivileges(database, owner)
@@ -80,7 +85,7 @@ func (p *PsqlAdm) BackupDatabase(database string, backup_path string) error {
 func (p *PsqlAdm) PreInit() (map[string]string, map[string]string, error) {
 	password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
-		logger.Error("Failed to generate a random password", err)
+		logger.Error(PSQLADM_LOG_PREFIX, "failed to generate a random password")
 		return nil, nil, err
 	}
 	extended_env := map[string]string{
@@ -96,7 +101,7 @@ func (p *PsqlAdm) PostInit(env_variables map[string]string) error {
 		return err
 	}
 
-	svcadm.CreateUsers(p, "psqladm")
+	svcadm.CreateUsers(p, PSQLADM)
 	return nil
 }
 
@@ -107,10 +112,10 @@ func (p *PsqlAdm) WaitFor() error {
 	for max_retries > 0 {
 		err := containerutils.RunContainerCommand(p.Service.Container.Name, "pg_isready")
 		if err == nil {
-			logger.Info("postgres container is ready")
+			logger.Info(PSQLADM_LOG_PREFIX, "postgres container is ready")
 			return nil
 		}
-		logger.Debug("postgres container is not ready, retrying in", retry_interval, "seconds")
+		logger.Debug(PSQLADM_LOG_PREFIX, "postgres container is not ready, retrying in", retry_interval, "seconds")
 		max_retries--
 		time.Sleep(retry_interval * time.Second)
 	}
@@ -134,4 +139,16 @@ func (p *PsqlAdm) GetService() config.Service {
 
 func (p *PsqlAdm) ContainerArgs() []string {
 	return []string{}
+}
+
+func (p *PsqlAdm) GetServiceName() string {
+	return p.Service.Name
+}
+
+func (p *PsqlAdm) GetServiceAdmName() string {
+	return PSQLADM
+}
+
+func (p *PsqlAdm) Cleanup() ([]string, []string) {
+	return []string{}, []string{}
 }

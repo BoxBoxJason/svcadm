@@ -17,8 +17,10 @@ import (
 )
 
 const (
-	SONAR_DB_USER = "sonarqube"
-	SONAR_DB_NAME = "sonarqube"
+	SONAR_DB_USER       = "sonarqube"
+	SONAR_DB_NAME       = "sonarqube"
+	SONARADM            = "sonaradm"
+	SONARADM_LOG_PREFIX = "sonaradm:"
 )
 
 type SonarAdm struct {
@@ -28,7 +30,6 @@ type SonarAdm struct {
 // PreInit sets up the sonarqube database and environment variables
 func (s *SonarAdm) PreInit() (map[string]string, map[string]string, error) {
 	additional_env := make(map[string]string)
-	additional_volumes := make(map[string]string)
 
 	// Create the sonarqube database
 	db_password, err := utils.GenerateRandomPassword(32)
@@ -40,17 +41,17 @@ func (s *SonarAdm) PreInit() (map[string]string, map[string]string, error) {
 
 	err = p.CreateUser(&config.User{Username: SONAR_DB_USER, Password: db_password})
 	if err != nil {
-		logger.Error("Failed to create the sonarqube PostgreSQL user", err)
+		logger.Error(SONARADM_LOG_PREFIX, "failed to create the sonarqube PostgreSQL user")
 		return nil, nil, err
 	} else {
-		logger.Info("Successfully created the sonarqube PostgreSQL user")
+		logger.Info(SONARADM_LOG_PREFIX, "successfully created the sonarqube PostgreSQL user")
 	}
 	err = p.CreateDatabase(SONAR_DB_NAME, SONAR_DB_NAME)
 	if err != nil {
-		logger.Error("Failed to create the sonarqube PostgreSQL database", err)
+		logger.Error(SONARADM_LOG_PREFIX, "failed to create the sonarqube PostgreSQL database")
 		return nil, nil, err
 	} else {
-		logger.Info("Successfully created the sonarqube PostgreSQL database")
+		logger.Info(SONARADM_LOG_PREFIX, "successfully created the sonarqube PostgreSQL database")
 	}
 
 	// Generate a random password for the admin user
@@ -69,7 +70,7 @@ func (s *SonarAdm) PreInit() (map[string]string, map[string]string, error) {
 	}
 	additional_env["SONAR_ES_CONNECTION_TIMEOUT"] = "1000"
 
-	return additional_env, additional_volumes, nil
+	return additional_env, nil, nil
 }
 
 // PostInit Waits until the sonarqube service is up and running, then deletes the default admin user and creates the specified ones
@@ -82,10 +83,10 @@ func (s *SonarAdm) PostInit(env_variables map[string]string) error {
 	// Change the password of the default admin user
 	err = containerutils.RunContainerCommand(s.Service.Container.Name, "curl", "-kfL", "-X", "POST", "http://localhost:9000/sonarqube/api/users/change_password", "-u", "admin:admin", "-d", "login=admin", "-d", "password="+env_variables["ADMIN_PASSWORD"], "-d", "previousPassword=admin")
 	if err != nil {
-		logger.Error("sonaradm: Failed to change the password of the default admin user", err)
+		logger.Error(SONARADM_LOG_PREFIX, "failed to change the password of the default admin user")
 		return err
 	}
-	svcadm.CreateUsers(s, "sonaradm")
+	svcadm.CreateUsers(s, SONARADM)
 	return nil
 }
 
@@ -101,12 +102,12 @@ func (s *SonarAdm) WaitFor() error {
 			err = json.Unmarshal(response, &result)
 			if err == nil {
 				if result["status"] == "UP" {
-					logger.Info("sonarqube container is ready")
+					logger.Info(SONARADM_LOG_PREFIX, "sonarqube container is ready")
 					return nil
 				}
 			}
 		}
-		logger.Debug("sonarqube container is not ready, retrying in", retry_interval, "seconds")
+		logger.Debug(SONARADM_LOG_PREFIX, "sonarqube container is not ready, retrying in", retry_interval, "seconds")
 		max_retry--
 		time.Sleep(retry_interval * time.Second)
 	}
@@ -135,7 +136,6 @@ func (s *SonarAdm) CreateAdminUser(user *config.User) error {
 	// Create the user and retrieve its ID
 	err = s.CreateUser(user)
 	if err != nil {
-		logger.Error("sonaradm: failed to create the user", err)
 		return err
 	}
 
@@ -148,7 +148,7 @@ func (s *SonarAdm) CreateAdminUser(user *config.User) error {
 
 	user_id, err := formatutils.RetrieveNestedId(users_output, "users", "login", user.Username, "id")
 	if err != nil || user_id == "" {
-		logger.Error("sonaradm: could not find the user ID for", user.Username, "the user was created but not added to the sonar-administrators group")
+		logger.Error(SONARADM_LOG_PREFIX, "could not find the user ID for", user.Username, "the user was created but not added to the sonar-administrators group")
 		return errors.New("could not find the user ID for " + user.Username)
 	}
 
@@ -156,14 +156,14 @@ func (s *SonarAdm) CreateAdminUser(user *config.User) error {
 	groups_response, err := containerutils.RunContainerCommandWithOutput(s.Service.Container.Name, "curl", "-kfs", "-u", "admin:"+admin_password,
 		"http://localhost:9000/sonarqube/api/v2/authorizations/groups?q=sonar-administrators")
 	if err != nil {
-		logger.Error("sonaradm: could not retrieve the groups, the user was created but not added to the sonar-administrators group")
+		logger.Error(SONARADM_LOG_PREFIX, "could not retrieve the groups, the user was created but not added to the sonar-administrators group")
 		return err
 	}
 
 	group_id, err := formatutils.RetrieveNestedId(groups_response, "groups", "name", "sonar-administrators", "id")
 	if err != nil || group_id == "" {
-		logger.Error("sonaradm: could not find the sonar-administrators group, the user was created but not added to the sonar-administrators group")
-		return errors.New("sonaradm: could not find the sonar-administrators group")
+		logger.Error(SONARADM_LOG_PREFIX, "could not find the sonar-administrators group, the user was created but not added to the sonar-administrators group")
+		return errors.New("could not find the sonar-administrators group")
 	}
 
 	return containerutils.RunContainerCommand(s.Service.Container.Name, "curl", "-kf", "-X", "POST",
@@ -180,22 +180,22 @@ func (s *SonarAdm) Backup(backup_path string) error {
 	backup_name := utils.GenerateDatetimeString()
 	err := p.BackupDatabase(SONAR_DB_NAME, path.Join(s.Service.Backup.Location, backup_name+".sql"))
 	if err != nil {
-		logger.Error("Failed to backup the sonarqube PostgreSQL database", err)
+		logger.Error(SONARADM_LOG_PREFIX, "failed to backup the sonarqube PostgreSQL database")
 	} else {
-		logger.Info("Successfully backed up the sonarqube PostgreSQL database to " + path.Join(s.Service.Backup.Location, backup_name+".sql"))
+		logger.Info(SONARADM_LOG_PREFIX, "successfully backed up the sonarqube PostgreSQL database to "+path.Join(s.Service.Backup.Location, backup_name+".sql"))
 	}
 
 	err = containerutils.RunContainerCommand(s.Service.Container.Name, "tar", "-cJf", "/tmp/sonarqube-backup.tar.xz", "$SONARQUBE_HOME/conf/", "$SONARQUBE_HOME/extensions/", "$SONARQUBE_HOME/data/")
 	if err != nil {
-		logger.Error("Failed to backup the sonarqube data", err)
+		logger.Error(SONARADM_LOG_PREFIX, "failed to backup the sonarqube data")
 		return err
 	}
 	err = containerutils.CopyContainerFile(s.Service.Container.Name, "/tmp/sonarqube-backup.tar.xz", backup_path)
 	if err != nil {
-		logger.Error("Failed to copy the sonarqube data backup", err)
+		logger.Error(SONARADM_LOG_PREFIX, "failed to copy the sonarqube data backup")
 		return err
 	}
-	logger.Info("Successfully backed up the sonarqube data to " + backup_path)
+	logger.Info(SONARADM_LOG_PREFIX, "successfully backed up the sonarqube data to "+backup_path)
 
 	return containerutils.RunContainerCommand(s.Service.Container.Name, "rm", "-f", "/tmp/sonarqube-backup.tar.xz")
 }
@@ -228,4 +228,16 @@ func (s *SonarAdm) ContainerArgs() []string {
 
 func (s *SonarAdm) retrieveAdminPassword() (string, error) {
 	return containerutils.GetContainerEnvVariable(s.Service.Container.Name, "ADMIN_PASSWORD")
+}
+
+func (s *SonarAdm) GetServiceName() string {
+	return s.Service.Name
+}
+
+func (s *SonarAdm) GetServiceAdmName() string {
+	return SONARADM
+}
+
+func (s *SonarAdm) Cleanup() ([]string, []string) {
+	return []string{}, []string{}
 }

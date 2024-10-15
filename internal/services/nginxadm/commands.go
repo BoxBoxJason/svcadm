@@ -21,6 +21,11 @@ import (
 	"github.com/boxboxjason/svcadm/pkg/utils"
 )
 
+const (
+	NGINXADM            = "nginxadm"
+	NGINXADM_LOG_PREFIX = "nginxadm:"
+)
+
 var (
 	NGINXADM_PATH   = path.Join(static.SVCADM_HOME, "nginxadm")
 	NGINX_CONF_PATH = path.Join(NGINXADM_PATH, "nginx.conf")
@@ -68,7 +73,7 @@ func (n *NginxAdm) PreInit() (map[string]string, map[string]string, error) {
 	configuration := config.GetConfiguration()
 	for _, service := range configuration.Services {
 		if service.Enabled && service.Nginx {
-			logger.Debug("adding location for", service.Name)
+			logger.Debug(NGINXADM_LOG_PREFIX, "adding location for", service.Name)
 			nginx_locations += formatutils.IndentMultilineString(getServiceNginx(&service), 8) + "\n"
 		}
 	}
@@ -147,4 +152,16 @@ func (n *NginxAdm) GetService() config.Service {
 
 func (n *NginxAdm) ContainerArgs() []string {
 	return []string{}
+}
+
+func (n *NginxAdm) GetServiceName() string {
+	return n.Service.Name
+}
+
+func (n *NginxAdm) GetServiceAdmName() string {
+	return NGINXADM
+}
+
+func (n *NginxAdm) Cleanup() ([]string, []string) {
+	return []string{}, []string{NGINXADM_PATH}
 }
