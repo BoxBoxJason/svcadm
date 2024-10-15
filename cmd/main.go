@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/boxboxjason/svcadm/internal/config"
@@ -37,8 +36,22 @@ var root_cmd = &cobra.Command{
 	Short: "svcadm is a service manager for development environments",
 	Long:  `svcadm is a service manager for development environments. Providing teams with a way to easily manage the services they need for their development environment.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		setLogLevel()
-		setAndValidateConfiguration()
+		// Set the log level
+		err := logger.SetLogLevel(log_level)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		// Set and validate the configuration file
+		config.SetConfiguration(config_file)
+		config.ValidateConfiguration()
+
+		configuration := config.GetConfiguration()
+		containerutils.SetContainersNetwork(configuration.General.ContainerOperator.Network.Name)
+		err = containerutils.CreateNetwork(configuration.General.ContainerOperator.Network.Name, configuration.General.ContainerOperator.Network.Driver)
+		if err != nil {
+			logger.Fatal("unable to create the container network: ", configuration.General.ContainerOperator.Network.Name)
+		}
 	},
 }
 
@@ -48,7 +61,10 @@ var setup_cmd = &cobra.Command{
 	Short: "Setup all services",
 	Long:  "Setup all services defined in the configuration file",
 	PreRun: func(cmd *cobra.Command, args []string) {
-		setAndValidateUsers()
+		// Set and validate the users
+		configuration := config.GetConfiguration()
+		config.SetUsers(configuration.General.Access.Logins)
+		config.ValidateUsers()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		logger.Debug("setup requested")
@@ -67,15 +83,7 @@ var status_cmd = &cobra.Command{
 	Short: "Get the status of services",
 	Long:  "Get the status of services defined in the configuration file. Can request multiple services at once or all enabled services if no service is specified",
 	Run: func(cmd *cobra.Command, args []string) {
-		logger.Debug("Status requested")
-
-		statuses, err := services.FetchServicesStatus()
-		if err != nil {
-			logger.Fatal(err)
-		}
-		for service, status := range statuses {
-			fmt.Printf("%s: %s\n", service, status)
-		}
+		services.FetchServicesStatus()
 	},
 }
 
@@ -112,53 +120,4 @@ var backup_cmd = &cobra.Command{
 		}
 		logger.Info("all services backed up")
 	},
-}
-
-func setAndValidateConfigurationAndUsers() {
-	// Check if given configuration is valid and set it
-	config.SetConfiguration(config_file)
-	config.ValidateConfiguration()
-
-	// Set the container operator
-	configuration := config.GetConfiguration()
-	err := containerutils.SetContainerOperator(configuration.General.ContainerOperator.Name)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	containerutils.SetContainersNetwork(configuration.General.ContainerOperator.Network.Name)
-	err = containerutils.CreateNetwork(configuration.General.ContainerOperator.Network.Name, configuration.General.ContainerOperator.Network.Driver)
-	if err != nil {
-		logger.Fatal("unable to create network: ", err)
-	}
-
-	// Set the users
-	config.SetUsers(configuration.General.Access.Logins)
-	config.ValidateUsers()
-}
-
-func setAndValidateConfiguration() {
-	// Check if given configuration is valid and set it
-	config.SetConfiguration(config_file)
-	config.ValidateConfiguration()
-
-	configuration := config.GetConfiguration()
-	containerutils.SetContainersNetwork(configuration.General.ContainerOperator.Network.Name)
-	err := containerutils.CreateNetwork(configuration.General.ContainerOperator.Network.Name, configuration.General.ContainerOperator.Network.Driver)
-	if err != nil {
-		logger.Fatal("unable to create network: ", err)
-	}
-}
-
-func setAndValidateUsers() {
-	configuration := config.GetConfiguration()
-	config.SetUsers(configuration.General.Access.Logins)
-	config.ValidateUsers()
-}
-
-func setLogLevel() {
-	fmt.Printf("Setting log level to %s\n", log_level)
-	err := logger.SetLogLevel(log_level)
-	if err != nil {
-		logger.Fatal(err)
-	}
 }

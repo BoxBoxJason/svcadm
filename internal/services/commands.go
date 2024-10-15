@@ -146,18 +146,25 @@ func FetchServiceStatus(service *config.Service) (string, error) {
 	return containerutils.FetchContainerStatus(service.Container.Name)
 }
 
-func FetchServicesStatus() (map[string]string, error) {
-	statuses := make(map[string]string)
+func FetchServicesStatus() {
+	var statuses sync.WaitGroup
+
 	for _, service := range config.GetConfiguration().Services {
 		if service.Enabled {
-			status, err := FetchServiceStatus(&service)
-			if err != nil {
-				return nil, err
-			}
-			statuses[service.Name] = status
+			statuses.Add(1)
+			go func(service config.Service) {
+				defer statuses.Done()
+
+				status, err := FetchServiceStatus(&service)
+				if err != nil {
+					logger.Error("could not fetch status for", service.Name)
+				}
+				fmt.Printf("%s: %s\n", service.Name, status)
+			}(service)
 		}
 	}
-	return statuses, nil
+
+	statuses.Wait()
 }
 
 // GetServiceLogs returns the logs of a service (from its container)

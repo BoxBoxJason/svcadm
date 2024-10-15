@@ -93,8 +93,8 @@ func (s *SonarAdm) PostInit(env_variables map[string]string) error {
 // WaitFor waits until the sonarqube server is up and running
 func (s *SonarAdm) WaitFor() error {
 	curl_command := []string{"curl", "-kfsL", "http://localhost:9000/sonarqube/api/system/status"}
-	max_retry := 30
-	const retry_interval = 10
+	max_retry := 15
+	const retry_interval = 20
 	for max_retry > 0 {
 		response, err := containerutils.RunContainerCommandWithOutput(s.Service.Container.Name, curl_command...)
 		if err == nil {

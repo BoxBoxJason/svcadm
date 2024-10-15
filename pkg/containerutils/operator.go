@@ -127,7 +127,7 @@ func FetchContainerStatus(container string) (string, error) {
 	operator := GetContainerOperator()
 	cmd := exec.Command(operator, "inspect", container, "--format", "{{.State.Status}}")
 	output, err := cmd.Output()
-	return string(output), err
+	return strings.Trim(string(output), "\n"), err
 }
 
 // WaitForContainerReadiness waits for a container to be ready using the container operator
@@ -153,7 +153,7 @@ func FetchContainerLogs(container string) (string, error) {
 	operator := GetContainerOperator()
 	cmd := exec.Command(operator, "logs", container)
 	output, err := cmd.Output()
-	return string(output), err
+	return strings.Trim(string(output), "\n"), err
 }
 
 // CreateVolume creates a volume using the container operator
