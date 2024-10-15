@@ -93,11 +93,7 @@ var cleanup_cmd = &cobra.Command{
 	Long:  "Cleanup all services defined in the configuration file",
 	Run: func(cmd *cobra.Command, args []string) {
 		logger.Debug("Cleanup requested")
-
-		err := services.CleanupServices()
-		if err != nil {
-			logger.Fatal(err)
-		}
+		services.CleanupServices()
 		logger.Info("all services cleaned up")
 	},
 }

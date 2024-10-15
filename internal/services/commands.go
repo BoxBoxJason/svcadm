@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/boxboxjason/svcadm/internal/config"
 	"github.com/boxboxjason/svcadm/internal/services/gitlabadm"
@@ -69,29 +70,49 @@ func getServiceAdm(service *config.Service) (svcadm.ServiceAdm, error) {
 }
 
 // CleanupService deletes the service container, its volumes and all ressources associated with it, except the backups
-func CleanupService(service_adm svcadm.ServiceAdm) error {
-	container_name, volumes, directories := svcadm.Cleanup(service_adm)
+func CleanupService(service *config.Service) error {
+
+	service_adm, err := getServiceAdm(service)
+	if err != nil {
+		logger.Error("could not get service adm for", service.Name)
+		return err
+	}
+
+	SERVICE_ADM_PREFIX := service_adm.GetServiceAdmName() + ":"
+
+	container_name := service.Container.Name
+	default_volumes, default_directories := service_adm.Cleanup()
+	volumes := config.GetServiceVolumes(service)
+
+	for _, volume := range default_volumes {
+		volumes[volume] = ""
+	}
+
 	if containerutils.CheckContainerExists(container_name) {
+		logger.Debug(SERVICE_ADM_PREFIX, "stopping and deleting container", container_name)
 		_ = containerutils.StopContainer(container_name)
 		err := containerutils.RemoveContainer(container_name)
 		if err != nil {
+			logger.Error(SERVICE_ADM_PREFIX, "could not remove container", container_name)
 			return err
 		}
 	}
 
-	for _, volume := range volumes {
+	for volume := range volumes {
 		if containerutils.CheckVolumeExists(volume) {
+			logger.Debug(SERVICE_ADM_PREFIX, "deleting volume", volume)
 			err := containerutils.RemoveVolume(volume)
 			if err != nil {
-				return err
+				logger.Error(SERVICE_ADM_PREFIX, "could not remove volume", volume)
 			}
 		}
 	}
 
-	for _, path := range directories {
+	for _, path := range default_directories {
+		logger.Debug(SERVICE_ADM_PREFIX, "deleting", path)
 		err := fileutils.DeleteDirectory(path)
 		if err != nil {
-			return err
+			logger.Error(SERVICE_ADM_PREFIX, "could not remove directory", path)
 		}
 	}
 
@@ -99,20 +120,25 @@ func CleanupService(service_adm svcadm.ServiceAdm) error {
 }
 
 // CleanupServices deletes all services containers, their volumes and all ressources associated with them, except the backups
-func CleanupServices() error {
+func CleanupServices() {
+	var services_cleanup sync.WaitGroup
+
 	for _, service := range config.GetConfiguration().Services {
 		if service.Enabled {
-			service_adm, err := getServiceAdm(&service)
-			if err != nil {
-				return err
-			}
-			err = CleanupService(service_adm)
-			if err != nil {
-				return err
-			}
+			logger.Info("cleaning up", service.Name)
+			services_cleanup.Add(1)
+			go func(service config.Service) {
+				defer services_cleanup.Done()
+
+				err := CleanupService(&service)
+				if err != nil {
+					logger.Error("something went wrong while cleaning up", service.Name, "check the logs for more information")
+				}
+			}(service)
 		}
 	}
-	return nil
+
+	services_cleanup.Wait()
 }
 
 // FetchServiceStatus returns the status of a service (from its container)
