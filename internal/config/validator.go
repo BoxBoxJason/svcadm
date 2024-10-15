@@ -8,6 +8,18 @@ import (
 	"github.com/boxboxjason/svcadm/pkg/logger"
 )
 
+const (
+	ALPHANUMERICS_REGEX = `^[a-zA-Z0-9_-]+$`
+)
+
+var (
+	VALID_VOLUME_NAME    = regexp.MustCompile(ALPHANUMERICS_REGEX)
+	VALID_CONTAINER_NAME = regexp.MustCompile(ALPHANUMERICS_REGEX)
+	VALID_NETWORK_NAME   = regexp.MustCompile(ALPHANUMERICS_REGEX)
+	VALID_USERNAME       = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,20}$`)
+	VALID_RESTART_POLICY = regexp.MustCompile(`^(always|no|unless-stopped|on-failure:\d+)$`)
+)
+
 // ValidateConfiguration ensures that the services in the configuration file are valid
 func ValidateConfiguration() {
 	config := GetConfiguration()
@@ -45,21 +57,12 @@ func validateContainerContent(container *Container) []string {
 	}
 
 	// Check if the restart policy is valid
-	onfailure_pattern := `^on-failure:\d+$`
-	re, err := regexp.Compile(onfailure_pattern)
-	if err != nil {
-		return []string{fmt.Sprintf("error compiling regex: %s", err)}
-	}
-	if container.Restart != "always" && container.Restart != "no" && container.Restart != "unless-stopped" && !re.MatchString(container.Restart) {
+	if !VALID_RESTART_POLICY.MatchString(container.Restart) {
 		errors = append(errors, fmt.Sprintf("invalid restart policy for container %s: %s", container.Name, container.Restart))
 	}
 
 	// Check if the container name is valid
-	re, err = regexp.Compile(`^[a-zA-Z0-9_-]+$`)
-	if err != nil {
-		return []string{fmt.Sprintf("error compiling regex: %s", err)}
-	}
-	if !re.MatchString(container.Name) {
+	if !VALID_CONTAINER_NAME.MatchString(container.Name) {
 		errors = append(errors, fmt.Sprintf("invalid container name: %s", container.Name))
 	}
 
@@ -88,12 +91,8 @@ func validatePersistenceContent(persistence *Persistence) []string {
 	}
 
 	// Check if the volumes are valid
-	re, err := regexp.Compile(`^[a-zA-Z0-9_-]+$`)
-	if err != nil {
-		return []string{fmt.Sprintf("error compiling regex: %s", err)}
-	}
 	for volume := range persistence.Volumes {
-		if !re.MatchString(volume) {
+		if !VALID_VOLUME_NAME.MatchString(volume) {
 			if _, err := os.Stat(volume); err != nil {
 				errors = append(errors, fmt.Sprintf("invalid volume name: %s", volume))
 			}
@@ -137,11 +136,7 @@ func validateContainerOperatorContent(container_operator *ContainerOperator) []s
 	}
 
 	// Check if the services network is valid
-	re, err := regexp.Compile(`^[a-zA-Z0-9_-]+$`)
-	if err != nil {
-		return []string{fmt.Sprintf("error compiling regex: %s", err)}
-	}
-	if !re.MatchString(container_operator.Network.Name) {
+	if !VALID_NETWORK_NAME.MatchString(container_operator.Network.Name) {
 		errors = append(errors, fmt.Sprintf("invalid network name: %s", container_operator.Network.Name))
 	}
 
@@ -217,11 +212,7 @@ func ValidateUsers() {
 
 // validateUsername ensures that the username uses alphanumeric characters, underscores and hyphens, the username must be between 3 and 20 characters
 func validateUsername(username string) bool {
-	re, err := regexp.Compile(`^[a-zA-Z0-9_-]{3,20}$`)
-	if err != nil {
-		return false
-	}
-	return re.MatchString(username)
+	return VALID_USERNAME.MatchString(username)
 }
 
 // validatePassword ensures that the password is between 6 and 32 characters long, with no spaces at the beginning or end
