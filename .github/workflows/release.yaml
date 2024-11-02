@@ -42,10 +42,11 @@ jobs:
           go-version: 1.22
 
       - name: Build
-        run: go mod tidy && go build -o svcadm_${{ matrix.os }}_${{ matrix.arch }} cmd/main.go
+        run: go mod tidy && go build -ldflags "-X github.com/boxboxjason/svcadm/internal/constants.SVCADM_VERSION=${{ github.ref_name }}" -o svcadm_${{ matrix.os }}_${{ matrix.arch }} cmd/main.go
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
 
       - name: Upload binaries
         uses: actions/upload-release-asset@v1
