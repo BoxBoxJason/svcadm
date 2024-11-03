@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 
 	"github.com/boxboxjason/svcadm/internal/config"
+	"github.com/boxboxjason/svcadm/internal/constants"
 	"github.com/boxboxjason/svcadm/internal/services"
-	"github.com/boxboxjason/svcadm/internal/static"
 	"github.com/boxboxjason/svcadm/pkg/containerutils"
 	"github.com/boxboxjason/svcadm/pkg/logger"
 	"github.com/spf13/cobra"
@@ -17,7 +17,7 @@ var (
 )
 
 func init() {
-	root_cmd.PersistentFlags().StringVarP(&config_file, "config", "c", filepath.Join(static.SVCADM_HOME, "svcadm.yaml"), "config file to use")
+	root_cmd.PersistentFlags().StringVarP(&config_file, "config", "c", filepath.Join(constants.SVCADM_HOME, "svcadm.yaml"), "config file to use")
 	root_cmd.PersistentFlags().StringVarP(&log_level, "loglevel", "l", "debug", "log level to use, one of: debug, info, warn, error, fatal")
 }
 
@@ -37,20 +37,20 @@ var root_cmd = &cobra.Command{
 	Long:  `svcadm is a service manager for development environments. Providing teams with a way to easily manage the services they need for their development environment.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Set the log level
-		err := logger.SetLogLevel(log_level)
-		if err != nil {
-			logger.Fatal(err)
-		}
+		logger.SetupLogger(constants.LOG_DIR, log_level)
 
 		// Set and validate the configuration file
 		config.SetConfiguration(config_file)
 		config.ValidateConfiguration()
 
 		configuration := config.GetConfiguration()
-		containerutils.SetContainersNetwork(configuration.General.ContainerOperator.Network.Name)
-		err = containerutils.CreateNetwork(configuration.General.ContainerOperator.Network.Name, configuration.General.ContainerOperator.Network.Driver)
+		err := containerutils.SetContainerEngine(configuration.General.ContainerOperator.Name)
 		if err != nil {
-			logger.Fatal("unable to create the container network: ", configuration.General.ContainerOperator.Network.Name)
+			logger.Fatal(err)
+		}
+		err = containerutils.SetContainersNetwork(configuration.General.ContainerOperator.Network.Name)
+		if err != nil {
+			logger.Fatal(err)
 		}
 	},
 }
@@ -73,7 +73,6 @@ var setup_cmd = &cobra.Command{
 		if err != nil {
 			logger.Fatal(err)
 		}
-		logger.Info("all services started")
 	},
 }
 
