@@ -21,11 +21,14 @@ general:
   # Configure the container runtime operator
   operator:
     # Can use "docker" or "podman"
-    name: "docker"
+    name: "podman"
     # Services network configuration
     network:
       driver: "bridge" # Not recommended to change this value
       name: "svcadm" # Container network name
+
+  containers:
+    labels: {}
 
 # Configure the services to be managed
 services:
@@ -33,7 +36,7 @@ services:
     # PostgreSQL must be enabled for the following services to work: gitlab, mattermost, sonarqube, vaultwarden
     enabled: true
     image:
-      repository: "postgres"
+      repository: "docker.io/library/postgres"
       tag: "15"
     container:
       name: "postgresql"
@@ -56,8 +59,8 @@ services:
   - name: sonarqube
     enabled: true
     image:
-      repository: "sonarqube"
-      tag: "10.6.0-community"
+      repository: "docker.io/library/sonarqube"
+      tag: "community"
     container:
       name: "sonarqube"
       # Configure the forwarded ports for sonarqube, values must be "host:container" format
@@ -80,7 +83,7 @@ services:
   - name: minio
     enabled: true
     image:
-      repository: "minio/minio"
+      repository: "docker.io/minio/minio"
       tag: "latest"
     container:
       name: "minio"
@@ -108,7 +111,7 @@ services:
   - name: nginx
     enabled: true
     image:
-      repository: "nginx"
+      repository: "docker.io/library/nginx"
       tag: "stable-alpine"
     container:
       name: "nginx"
@@ -128,7 +131,7 @@ services:
   - name: clamav
     enabled: false
     image:
-      repository: "clamav/clamav"
+      repository: "docker.io/clamav/clamav"
       tag: "latest"
     container:
       name: "clamav"
@@ -140,7 +143,7 @@ services:
   - name: gitlab
     enabled: true
     image:
-      repository: "gitlab/gitlab-ce"
+      repository: "docker.io/gitlab/gitlab-ce"
       tag: "latest"
     container:
       name: "gitlab"
@@ -164,7 +167,7 @@ services:
   - name: mattermost
     enabled: true
     image:
-      repository: "mattermost/mattermost-team-edition"
+      repository: "docker.io/mattermost/mattermost-team-edition"
       tag: "latest"
     container:
       name: "mattermost"
@@ -192,7 +195,7 @@ services:
   - name: trivy
     enabled: true
     image:
-      repository: "aquasec/trivy"
+      repository: "docker.io/aquasec/trivy"
       tag: "latest"
     container:
       name: "trivy"
@@ -204,7 +207,7 @@ services:
   - name: vault
     enabled: true
     image:
-      repository: "hashicorp/vault"
+      repository: "docker.io/hashicorp/vault"
       tag: "latest"
     container:
       name: "vault"
