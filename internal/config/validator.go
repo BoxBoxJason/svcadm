@@ -5,19 +5,22 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/boxboxjason/svcadm/pkg/containerutils"
 	"github.com/boxboxjason/svcadm/pkg/logger"
 )
 
-const (
-	ALPHANUMERICS_REGEX = `^[a-zA-Z0-9_-]+$`
-)
-
 var (
-	VALID_VOLUME_NAME    = regexp.MustCompile(ALPHANUMERICS_REGEX)
-	VALID_CONTAINER_NAME = regexp.MustCompile(ALPHANUMERICS_REGEX)
-	VALID_NETWORK_NAME   = regexp.MustCompile(ALPHANUMERICS_REGEX)
-	VALID_USERNAME       = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,20}$`)
-	VALID_RESTART_POLICY = regexp.MustCompile(`^(always|no|unless-stopped|on-failure:\d+)$`)
+	VALID_USERNAME = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,20}$`)
+	SERVICE_NEEDS  = map[string][]string{
+		"sonarqube":  {"postgresql"},
+		"gitlab":     {"postgresql"},
+		"minio":      {},
+		"mattermost": {"postgresql"},
+		"vault":      {},
+		"trivy":      {},
+		"nginx":      {},
+		"postgresql": {},
+	}
 )
 
 // ValidateConfiguration ensures that the services in the configuration file are valid
@@ -39,6 +42,7 @@ func ValidateConfiguration() {
 			all_errors = append(all_errors, validateContainerContent(&service.Container)...)
 			all_errors = append(all_errors, validatePersistenceContent(&service.Persistence)...)
 			all_errors = append(all_errors, validateBackupContent(&service.Backup)...)
+			all_errors = append(all_errors, checkDependenciesEnabled(&service)...)
 		}
 	}
 
@@ -57,12 +61,12 @@ func validateContainerContent(container *Container) []string {
 	}
 
 	// Check if the restart policy is valid
-	if !VALID_RESTART_POLICY.MatchString(container.Restart) {
+	if !containerutils.VALID_RESTART_POLICY.MatchString(container.Restart) {
 		errors = append(errors, fmt.Sprintf("invalid restart policy for container %s: %s", container.Name, container.Restart))
 	}
 
 	// Check if the container name is valid
-	if !VALID_CONTAINER_NAME.MatchString(container.Name) {
+	if !containerutils.VALID_CONTAINER_NAME.MatchString(container.Name) {
 		errors = append(errors, fmt.Sprintf("invalid container name: %s", container.Name))
 	}
 
@@ -92,7 +96,7 @@ func validatePersistenceContent(persistence *Persistence) []string {
 
 	// Check if the volumes are valid
 	for volume := range persistence.Volumes {
-		if !VALID_VOLUME_NAME.MatchString(volume) {
+		if !containerutils.VALID_VOLUME_NAME.MatchString(volume) {
 			if _, err := os.Stat(volume); err != nil {
 				errors = append(errors, fmt.Sprintf("invalid volume name: %s", volume))
 			}
@@ -136,7 +140,7 @@ func validateContainerOperatorContent(container_operator *ContainerOperator) []s
 	}
 
 	// Check if the services network is valid
-	if !VALID_NETWORK_NAME.MatchString(container_operator.Network.Name) {
+	if !containerutils.VALID_NETWORK_NAME.MatchString(container_operator.Network.Name) {
 		errors = append(errors, fmt.Sprintf("invalid network name: %s", container_operator.Network.Name))
 	}
 
@@ -221,4 +225,17 @@ func validatePassword(password string) bool {
 		return false
 	}
 	return password[0] != ' ' && password[len(password)-1] != ' '
+}
+
+func checkDependenciesEnabled(service *Service) []string {
+	var missing []string
+	if service.Enabled && service.Nginx {
+		SERVICE_NEEDS["nginx"] = append(SERVICE_NEEDS["nginx"], service.Name)
+	}
+	for _, dependency := range SERVICE_NEEDS[service.Name] {
+		if !serviceIsEnabled(dependency) {
+			missing = append(missing, fmt.Sprintf("%s missing dependency: %s", service.Name, dependency))
+		}
+	}
+	return missing
 }

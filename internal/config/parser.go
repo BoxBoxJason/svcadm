@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/boxboxjason/svcadm/pkg/containerutils"
 	"gopkg.in/yaml.v2"
 )
 
@@ -95,7 +96,7 @@ func GetService(service_name string) Service {
 func GetServiceVolumes(service *Service) map[string]string {
 	volumes := make(map[string]string)
 	for volume, path := range service.Persistence.Volumes {
-		if VALID_VOLUME_NAME.MatchString(volume) {
+		if containerutils.VALID_VOLUME_NAME.MatchString(volume) {
 			volumes[volume] = path
 		}
 	}

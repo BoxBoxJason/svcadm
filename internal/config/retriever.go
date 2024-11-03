@@ -38,3 +38,13 @@ func retrieveValidServices() map[string]bool {
 		"vault":      true,
 	}
 }
+
+func serviceIsEnabled(service string) bool {
+	config := GetConfiguration()
+	for _, s := range config.Services {
+		if s.Name == service && s.Enabled {
+			return true
+		}
+	}
+	return false
+}

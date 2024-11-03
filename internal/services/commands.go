@@ -44,9 +44,29 @@ func Backup(service_name string, backup_path string) error {
 	return service_adm.Backup(backup_path)
 }
 
-func getServiceAdm(service *config.Service) (svcadm.ServiceAdm, error) {
+// getServiceAdm returns the service adm for the given service
+// Can input either a service name, a service struct or a pointer to a service struct
+func getServiceAdm(service_interface interface{}) (svcadm.ServiceAdm, error) {
+	var service_name string
+	var service *config.Service
+	if service_interface == nil {
+		return nil, fmt.Errorf("service not found")
+	} else if service_attempt, ok := service_interface.(config.Service); ok {
+		service_name = service_attempt.Name
+		service = &service_attempt
+	} else if service_attempt, ok := service_interface.(*config.Service); ok {
+		service_name = service_attempt.Name
+		service = service_attempt
+	} else if service_name_string, ok := service_interface.(string); ok {
+		service_name = service_name_string
+		tmp_service := config.GetService(service_name)
+		service = &tmp_service
+	} else {
+		return nil, fmt.Errorf("service not found")
+	}
+
 	var serviceAdm svcadm.ServiceAdm
-	switch service.Name {
+	switch service_name {
 	case "sonarqube":
 		serviceAdm = &sonaradm.SonarAdm{Service: *service}
 	case "postgresql":
@@ -88,20 +108,22 @@ func CleanupService(service *config.Service) error {
 		volumes[volume] = ""
 	}
 
-	if containerutils.CheckContainerExists(container_name) {
+	container_exists, err := containerutils.CheckContainerExists(container_name)
+	if err != nil {
+		logger.Error(SERVICE_ADM_PREFIX, "could not check if container exists", container_name)
+	} else if container_exists {
 		logger.Debug(SERVICE_ADM_PREFIX, "stopping and deleting container", container_name)
 		_ = containerutils.StopContainer(container_name)
-		err := containerutils.RemoveContainer(container_name)
+		err := containerutils.RemoveContainer(container_name, true)
 		if err != nil {
 			logger.Error(SERVICE_ADM_PREFIX, "could not remove container", container_name)
-			return err
 		}
 	}
 
 	for volume := range volumes {
 		if containerutils.CheckVolumeExists(volume) {
 			logger.Debug(SERVICE_ADM_PREFIX, "deleting volume", volume)
-			err := containerutils.RemoveVolume(volume)
+			err := containerutils.RemoveVolume(volume, true)
 			if err != nil {
 				logger.Error(SERVICE_ADM_PREFIX, "could not remove volume", volume)
 			}
@@ -184,8 +206,8 @@ func ResumeService(service *config.Service) error {
 
 // StartService runs
 func StartService(service_adm svcadm.ServiceAdm) error {
-	logger.Debug("service pre-init")
-	additional_env, additional_volumes, err := service_adm.PreInit()
+	logger.Debug(service_adm.GetServiceAdmName()+":", "service pre-init")
+	additional_env, additional_volumes, cap_adds, entrypoint, err := service_adm.PreInit()
 	if err != nil {
 		return err
 	}
@@ -209,31 +231,37 @@ func StartService(service_adm svcadm.ServiceAdm) error {
 		container_volumes[volume] = path
 	}
 
-	logger.Debug("service init")
-	err = containerutils.StartContainer(service.Container.Name, fmt.Sprintf("%s:%s", service.Image.Repository, service.Image.Tag), container_volumes, service.Container.Ports, container_env, service.Container.Restart, service_adm.ContainerArgs(), service_adm.InitArgs())
+	logger.Debug(service_adm.GetServiceAdmName()+":", "service init")
+	err = containerutils.CreateContainer(service.Container.Name, fmt.Sprintf("%s:%s", service.Image.Repository, service.Image.Tag), serviceLabels(service_adm), container_volumes, service.Container.Ports, container_env, service.Container.Restart, cap_adds, entrypoint)
 	if err != nil {
 		return err
 	}
 
-	logger.Debug("service post-init")
+	logger.Debug(service_adm.GetServiceAdmName()+":", "service post-init")
 	return service_adm.PostInit(additional_env)
 }
 
 // StartServices starts all services that are enabled in the configuration file
 func StartServices() error {
 	configuration := config.GetConfiguration()
-	for _, service := range configuration.Services {
-		if service.Enabled {
-			logger.Debug(fmt.Sprintf("Starting %s", service.Name))
-			service_adm, err := getServiceAdm(&service)
-			if err != nil {
-				return err
-			}
-			err = StartService(service_adm)
-			if err != nil {
-				return err
-			}
+	service_order := servicesStartOrder(&configuration.Services)
+
+	// Start the services by batches asynchroniously
+	for i, batch := range service_order {
+		logger.Debug("starting batch", i+1)
+		var services_start sync.WaitGroup
+		for _, service_adm := range batch {
+			services_start.Add(1)
+			go func(service_adm svcadm.ServiceAdm) {
+				defer services_start.Done()
+				err := StartService(service_adm)
+				if err != nil {
+					logger.Error("could not start", service_adm.GetServiceAdmName())
+				}
+			}(service_adm)
 		}
+		services_start.Wait()
 	}
+	logger.Info("all services started")
 	return nil
 }

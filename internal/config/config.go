@@ -4,7 +4,7 @@ import (
 	"path"
 	"sync"
 
-	"github.com/boxboxjason/svcadm/internal/static"
+	"github.com/boxboxjason/svcadm/internal/constants"
 	"github.com/boxboxjason/svcadm/pkg/logger"
 )
 
@@ -13,7 +13,7 @@ var (
 	mu_CONFIGURATION   sync.RWMutex
 	users              Users
 	mu_USERS           sync.RWMutex
-	CONFIGURATION_PATH = path.Join(static.SVCADM_HOME, "svcadm.yaml")
+	CONFIGURATION_PATH = path.Join(constants.SVCADM_HOME, "svcadm.yaml")
 )
 
 // SetConfiguration sets the configuration to be used
@@ -83,6 +83,7 @@ type Configuration struct {
 type General struct {
 	Access            Access            `yaml:"access"`
 	ContainerOperator ContainerOperator `yaml:"operator"`
+	Containers        Containers        `yaml:"containers"`
 }
 
 type ContainerOperator struct {
@@ -149,4 +150,8 @@ type Encryption struct {
 	Enabled bool   `yaml:"enabled"`
 	Key     string `yaml:"key"`
 	Salt    string `yaml:"salt"`
+}
+
+type Containers struct {
+	Labels map[string]string `yaml:"labels"`
 }
