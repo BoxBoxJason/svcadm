@@ -16,11 +16,8 @@ type TrivyAdm struct {
 	Service config.Service
 }
 
-func (t *TrivyAdm) PreInit() (map[string]string, map[string]string, error) {
-	additional_env := make(map[string]string)
-	additional_volumes := make(map[string]string)
-
-	return additional_env, additional_volumes, nil
+func (t *TrivyAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
+	return nil, nil, nil, []string{"server", "--listen", "0.0.0.0:4954"}, nil
 }
 
 func (t *TrivyAdm) CreateUser(user *config.User) error {
@@ -56,18 +53,9 @@ location /%s/ {
 }`, t.Service.Name, t.Service.Container.Name)
 }
 
-// InitArgs returns the additional arguments / command required to start the trivy container
-func (t *TrivyAdm) InitArgs() []string {
-	return []string{"server", "--listen", "0.0.0.0:4954"}
-}
-
 // GetService returns the service configuration
 func (t *TrivyAdm) GetService() config.Service {
 	return t.Service
-}
-
-func (t *TrivyAdm) ContainerArgs() []string {
-	return []string{}
 }
 
 func (t *TrivyAdm) GetServiceName() string {

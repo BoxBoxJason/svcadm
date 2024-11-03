@@ -54,7 +54,7 @@ func (m *MinioAdm) BackupBucket(bucket_name string, backup_path string) error {
 		logger.Error(MINIOADM_LOG_PREFIX, "failed to backup the minio bucket")
 		return err
 	}
-	err = containerutils.CopyContainerFile(m.Service.Container.Name, fmt.Sprintf("/tmp/%s.tar.xz", bucket_name), backup_name)
+	err = containerutils.CopyContainerResource(m.Service.Container.Name, fmt.Sprintf("/tmp/%s.tar.xz", bucket_name), backup_name)
 	if err != nil {
 		logger.Error(MINIOADM_LOG_PREFIX, "failed to copy the minio bucket backup on the host machine")
 		return err
@@ -69,7 +69,7 @@ func (m *MinioAdm) Backup(backup_name string) error {
 		logger.Error(MINIOADM_LOG_PREFIX, "failed to backup the minio data")
 		return err
 	}
-	err = containerutils.CopyContainerFile(m.Service.Container.Name, "/tmp/all.tar.xz", backup_name)
+	err = containerutils.CopyContainerResource(m.Service.Container.Name, "/tmp/all.tar.xz", backup_name)
 	if err != nil {
 		logger.Error(MINIOADM_LOG_PREFIX, "failed to copy the minio data backup")
 		return err
@@ -90,9 +90,8 @@ func (m *MinioAdm) DeleteBucket(bucket_name string) error {
 }
 
 // PreInit runs the pre init steps for the minio server
-func (m *MinioAdm) PreInit() (map[string]string, map[string]string, error) {
+func (m *MinioAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
 	extended_env := make(map[string]string)
-	extended_volumes := make(map[string]string)
 	var err error
 
 	// Set the environment variables for the minio server
@@ -105,13 +104,13 @@ func (m *MinioAdm) PreInit() (map[string]string, map[string]string, error) {
 		root_password, err = utils.GenerateRandomPassword(32)
 		if err != nil {
 			logger.Error(MINIOADM_LOG_PREFIX, "failed to generate a random password")
-			return nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 	}
 	extended_env["MINIO_ROOT_USER"] = root_user
 	extended_env["MINIO_ROOT_PASSWORD"] = root_password
 
-	return extended_env, extended_volumes, nil
+	return extended_env, nil, nil, nil, nil
 }
 
 // PostInit runs the post init steps for the minio server
@@ -179,18 +178,9 @@ location /%s-api/ {
 }`, m.Service.Name, m.Service.Name, m.Service.Container.Name, m.Service.Name, m.Service.Container.Name)
 }
 
-// InitArgs returns the additional arguments / command required to start the minio container
-func (m *MinioAdm) InitArgs() []string {
-	return []string{"server", "/data", "--console-address", ":9001"}
-}
-
 // GetService returns the service object from the configuration
 func (m *MinioAdm) GetService() config.Service {
 	return m.Service
-}
-
-func (m *MinioAdm) ContainerArgs() []string {
-	return []string{}
 }
 
 func (m *MinioAdm) GetServiceName() string {

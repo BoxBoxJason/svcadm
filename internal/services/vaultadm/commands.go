@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/boxboxjason/svcadm/internal/config"
+	"github.com/boxboxjason/svcadm/internal/constants"
 	"github.com/boxboxjason/svcadm/internal/services/svcadm"
-	"github.com/boxboxjason/svcadm/internal/static"
 	"github.com/boxboxjason/svcadm/pkg/containerutils"
 	"github.com/boxboxjason/svcadm/pkg/fileutils"
 	"github.com/boxboxjason/svcadm/pkg/logger"
@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	VAULT_PATH      = path.Join(static.SVCADM_HOME, "vaultadm")
+	VAULT_PATH      = path.Join(constants.SVCADM_HOME, "vaultadm")
 	ROOT_TOKEN_PATH = path.Join(VAULT_PATH, ".root_token")
 	SEAL_KEY_PATH   = path.Join(VAULT_PATH, ".seal_%d")
 )
@@ -41,8 +41,8 @@ func (v *VaultAdm) CreateAdminUser(user *config.User) error {
 }
 
 // PreInit sets up the vault database and environment variables
-func (v *VaultAdm) PreInit() (map[string]string, map[string]string, error) {
-	return nil, nil, nil
+func (v *VaultAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
+	return nil, nil, []string{"IPC_LOCK"}, []string{"server"}, nil
 }
 
 // PostInit Waits until the vault service is up and running, inits and unseals the vault, creates the users
@@ -160,7 +160,6 @@ func (v *VaultAdm) GenerateNginxConf() string {
 location /%s/ {
 	proxy_http_version 1.1;
 	proxy_set_header Upgrade $http_upgrade;
-	proxy_set_header Connection $connection_upgrade;
 
 	proxy_set_header Host $host;
 	proxy_set_header X-Real-IP $remote_addr;
@@ -171,18 +170,9 @@ location /%s/ {
 }`, v.Service.Name, v.Service.Container.Name)
 }
 
-// InitArgs returns the arguments to be passed to the vault container
-func (v *VaultAdm) InitArgs() []string {
-	return []string{"server"}
-}
-
 // GetService returns the service configuration
 func (v *VaultAdm) GetService() config.Service {
 	return v.Service
-}
-
-func (v *VaultAdm) ContainerArgs() []string {
-	return []string{"--cap-add", "IPC_LOCK"}
 }
 
 // saveAdminToken saves the admin token to a file

@@ -82,16 +82,16 @@ func (p *PsqlAdm) BackupDatabase(database string, backup_path string) error {
 }
 
 // PreInit generates a random password for the postgres user
-func (p *PsqlAdm) PreInit() (map[string]string, map[string]string, error) {
+func (p *PsqlAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
 	password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
 		logger.Error(PSQLADM_LOG_PREFIX, "failed to generate a random password")
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	extended_env := map[string]string{
 		"POSTGRES_PASSWORD": password,
 	}
-	return extended_env, nil, nil
+	return extended_env, nil, nil, nil, nil
 }
 
 // PostInit creates the superusers and users in the postgres cluster
@@ -107,7 +107,7 @@ func (p *PsqlAdm) PostInit(env_variables map[string]string) error {
 
 // WaitFor waits for the postgres container to be ready
 func (p *PsqlAdm) WaitFor() error {
-	max_retries := 30
+	max_retries := 15
 	const retry_interval = 5
 	for max_retries > 0 {
 		err := containerutils.RunContainerCommand(p.Service.Container.Name, "pg_isready")
@@ -127,18 +127,9 @@ func (p *PsqlAdm) GenerateNginxConf() string {
 	return ""
 }
 
-// InitArgs returns the additional arguments / command required to start the postgres container
-func (p *PsqlAdm) InitArgs() []string {
-	return []string{}
-}
-
 // GetService returns the service configuration
 func (p *PsqlAdm) GetService() config.Service {
 	return p.Service
-}
-
-func (p *PsqlAdm) ContainerArgs() []string {
-	return []string{}
 }
 
 func (p *PsqlAdm) GetServiceName() string {

@@ -28,13 +28,13 @@ type SonarAdm struct {
 }
 
 // PreInit sets up the sonarqube database and environment variables
-func (s *SonarAdm) PreInit() (map[string]string, map[string]string, error) {
+func (s *SonarAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
 	additional_env := make(map[string]string)
 
 	// Create the sonarqube database
 	db_password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	postgres_service := config.GetService("postgresql")
 	p := psqladm.PsqlAdm{Service: postgres_service}
@@ -42,14 +42,14 @@ func (s *SonarAdm) PreInit() (map[string]string, map[string]string, error) {
 	err = p.CreateUser(&config.User{Username: SONAR_DB_USER, Password: db_password})
 	if err != nil {
 		logger.Error(SONARADM_LOG_PREFIX, "failed to create the sonarqube PostgreSQL user")
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	} else {
 		logger.Info(SONARADM_LOG_PREFIX, "successfully created the sonarqube PostgreSQL user")
 	}
 	err = p.CreateDatabase(SONAR_DB_NAME, SONAR_DB_NAME)
 	if err != nil {
 		logger.Error(SONARADM_LOG_PREFIX, "failed to create the sonarqube PostgreSQL database")
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	} else {
 		logger.Info(SONARADM_LOG_PREFIX, "successfully created the sonarqube PostgreSQL database")
 	}
@@ -57,7 +57,7 @@ func (s *SonarAdm) PreInit() (map[string]string, map[string]string, error) {
 	// Generate a random password for the admin user
 	admin_password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	additional_env["ADMIN_PASSWORD"] = admin_password
 
@@ -70,7 +70,7 @@ func (s *SonarAdm) PreInit() (map[string]string, map[string]string, error) {
 	}
 	additional_env["SONAR_ES_CONNECTION_TIMEOUT"] = "1000"
 
-	return additional_env, nil, nil
+	return additional_env, nil, nil, nil, nil
 }
 
 // PostInit Waits until the sonarqube service is up and running, then deletes the default admin user and creates the specified ones
@@ -190,7 +190,7 @@ func (s *SonarAdm) Backup(backup_path string) error {
 		logger.Error(SONARADM_LOG_PREFIX, "failed to backup the sonarqube data")
 		return err
 	}
-	err = containerutils.CopyContainerFile(s.Service.Container.Name, "/tmp/sonarqube-backup.tar.xz", backup_path)
+	err = containerutils.CopyContainerResource(s.Service.Container.Name, "/tmp/sonarqube-backup.tar.xz", backup_path)
 	if err != nil {
 		logger.Error(SONARADM_LOG_PREFIX, "failed to copy the sonarqube data backup")
 		return err
@@ -212,18 +212,9 @@ location /%s/ {
 }`, s.Service.Name, s.Service.Container.Name)
 }
 
-// InitArgs returns the additional arguments / command required to start the sonarqube container
-func (s *SonarAdm) InitArgs() []string {
-	return []string{}
-}
-
 // GetService returns the service configuration
 func (s *SonarAdm) GetService() config.Service {
 	return s.Service
-}
-
-func (s *SonarAdm) ContainerArgs() []string {
-	return []string{}
 }
 
 func (s *SonarAdm) retrieveAdminPassword() (string, error) {

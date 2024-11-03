@@ -6,18 +6,27 @@ import (
 )
 
 type ServiceAdm interface {
-	PreInit() (map[string]string, map[string]string, error)
+	// PreInit creates the necessary environment variables, volumes, cap_adds and entrypoint for the service
+	PreInit() (map[string]string, map[string]string, []string, []string, error)
+	// PostInit waits for the service to be up and running, creates the users and other necessary configurations
 	PostInit(env_variables map[string]string) error
+	// CreateUser creates a user in the service
 	CreateUser(user *config.User) error
+	// CreateAdminUser creates an admin user in the service
 	CreateAdminUser(user *config.User) error
+	// Backup creates a backup of the service at the specified path
 	Backup(backup_path string) error
+	// WaitFor waits for the service to be up and running
 	WaitFor() error
+	// GenerateNginxConf generates the nginx configuration for the service
 	GenerateNginxConf() string
-	InitArgs() []string
+	// GetService returns the service configuration used by the service adm
 	GetService() config.Service
-	ContainerArgs() []string
+	// GetServiceName returns the name of the service used by the service adm
 	GetServiceName() string
+	// GetServiceAdmName returns the name of the service adm (used for logging)
 	GetServiceAdmName() string
+	// Cleanup removes the service and its volumes
 	Cleanup() ([]string, []string)
 }
 

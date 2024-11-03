@@ -36,11 +36,11 @@ func (m *MattermostAdm) CreateAdminUser(user *config.User) error {
 }
 
 // PreInit sets up the mattermost database and environment variables, err
-func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, error) {
+func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
 	// Create the mattermost database
 	db_password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	postgres_service := config.GetService("postgresql")
 	p := psqladm.PsqlAdm{Service: postgres_service}
@@ -48,14 +48,14 @@ func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, error) 
 	err = p.CreateUser(&config.User{Username: MATTERMOST_DB_USER, Password: db_password})
 	if err != nil {
 		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to create the mattermost PostgreSQL user")
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	} else {
 		logger.Info(MATTERMOSTADM_LOG_PREFIX, "successfully created the mattermost PostgreSQL user")
 	}
 	err = p.CreateDatabase(MATTERMOST_DB_NAME, MATTERMOST_DB_USER)
 	if err != nil {
 		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to create the mattermost PostgreSQL database")
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	} else {
 		logger.Info(MATTERMOSTADM_LOG_PREFIX, "successfully created the mattermost PostgreSQL database")
 	}
@@ -69,7 +69,7 @@ func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, error) 
 		extended_env["MM_SERVICESETTINGS_SITEURL"] = fmt.Sprintf("https://%s/mattermost", utils.GetHostname())
 	}
 
-	return extended_env, map[string]string{}, nil
+	return extended_env, nil, nil, nil, nil
 }
 
 // PostInit creates the users and admins in the mattermost service
@@ -103,7 +103,7 @@ func (m *MattermostAdm) Backup(backup_path string) error {
 		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to export the mattermost data")
 		return err
 	}
-	err = containerutils.CopyContainerFile(m.Service.Container.Name, path.Join("tmp", backup_name+".zip"), backup_path)
+	err = containerutils.CopyContainerResource(m.Service.Container.Name, path.Join("tmp", backup_name+".zip"), backup_path)
 	if err != nil {
 		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to copy the mattermost backup onto the host machine")
 		return err
@@ -122,11 +122,6 @@ func (m *MattermostAdm) GenerateNginxConf() string {
 	proxy_set_header Upgrade $http_upgrade;
 	proxy_redirect off;
 }`, m.Service.Name, m.Service.Container.Name)
-}
-
-// InitArgs returns the additional arguments / command required to start the mattermost container
-func (m *MattermostAdm) InitArgs() []string {
-	return []string{}
 }
 
 // WaitFor waits until the mattermost server is up and running
@@ -154,10 +149,6 @@ func (m *MattermostAdm) WaitFor() error {
 // GetService returns the service object from the configuration
 func (m *MattermostAdm) GetService() config.Service {
 	return m.Service
-}
-
-func (m *MattermostAdm) ContainerArgs() []string {
-	return []string{}
 }
 
 func (m *MattermostAdm) GetServiceName() string {

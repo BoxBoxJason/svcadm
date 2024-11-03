@@ -5,6 +5,7 @@ import (
 	"path"
 
 	"github.com/boxboxjason/svcadm/internal/config"
+	"github.com/boxboxjason/svcadm/internal/constants"
 	"github.com/boxboxjason/svcadm/internal/services/gitlabadm"
 	"github.com/boxboxjason/svcadm/internal/services/mattermostadm"
 	"github.com/boxboxjason/svcadm/internal/services/minioadm"
@@ -13,7 +14,6 @@ import (
 	"github.com/boxboxjason/svcadm/internal/services/svcadm"
 	"github.com/boxboxjason/svcadm/internal/services/trivyadm"
 	"github.com/boxboxjason/svcadm/internal/services/vaultadm"
-	"github.com/boxboxjason/svcadm/internal/static"
 	"github.com/boxboxjason/svcadm/pkg/containerutils"
 	"github.com/boxboxjason/svcadm/pkg/fileutils"
 	"github.com/boxboxjason/svcadm/pkg/formatutils"
@@ -27,20 +27,11 @@ const (
 )
 
 var (
-	NGINXADM_PATH   = path.Join(static.SVCADM_HOME, "nginxadm")
+	NGINXADM_PATH   = path.Join(constants.SVCADM_HOME, "nginxadm")
 	NGINX_CONF_PATH = path.Join(NGINXADM_PATH, "nginx.conf")
 )
 
-const NGINX_CONF = `user nginx;
-worker_processes auto;
-
-error_log /var/log/nginx/error.log;
-pid /var/run/nginx.pid;
-
-events {
-	worker_connections 1024;
-}
-
+const NGINX_CONF = `
 http {
     server {
         listen 80;
@@ -67,21 +58,21 @@ type NginxAdm struct {
 }
 
 // PreInit sets up the nginx service by generating the nginx configuration files with each service location
-func (n *NginxAdm) PreInit() (map[string]string, map[string]string, error) {
+func (n *NginxAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
 	// Generate the nginx configuration file
 	nginx_locations := ""
 	configuration := config.GetConfiguration()
 	for _, service := range configuration.Services {
 		if service.Enabled && service.Nginx {
 			logger.Debug(NGINXADM_LOG_PREFIX, "adding location for", service.Name)
-			nginx_locations += formatutils.IndentMultilineString(getServiceNginx(&service), 8) + "\n"
+			nginx_locations += formatutils.IndentMultilineString(getServiceNginx(&service), 4) + "\n"
 		}
 	}
 	hostname := utils.GetHostname()
 	nginx_conf := fmt.Sprintf(NGINX_CONF, hostname, hostname, "/etc/ssl/certs/svcadm.crt", "/etc/ssl/private/svcadm.key", nginx_locations)
 	err := fileutils.WriteToFile(NGINX_CONF_PATH, nginx_conf)
 
-	return nil, map[string]string{NGINX_CONF_PATH: "/etc/nginx/nginx.conf"}, err
+	return nil, map[string]string{NGINX_CONF_PATH: "/etc/nginx/conf.d/default.conf"}, nil, nil, err
 }
 
 // PostInit sets up the nginx service after the configuration files have been generated (empty because nginx does not require post init)
@@ -114,11 +105,6 @@ func (n *NginxAdm) GenerateNginxConf() string {
 	return ""
 }
 
-// InitArgs returns the arguments to be passed to the nginx container (empty because nginx does not require arguments)
-func (n *NginxAdm) InitArgs() []string {
-	return []string{}
-}
-
 // getServiceAdm returns the service adm for a service
 func getServiceNginx(service *config.Service) string {
 	var serviceAdm svcadm.ServiceAdm
@@ -148,10 +134,6 @@ func getServiceNginx(service *config.Service) string {
 // GetService returns the service object from the configuration
 func (n *NginxAdm) GetService() config.Service {
 	return n.Service
-}
-
-func (n *NginxAdm) ContainerArgs() []string {
-	return []string{}
 }
 
 func (n *NginxAdm) GetServiceName() string {
