@@ -207,38 +207,47 @@ func ResumeService(service *config.Service) error {
 // StartService runs
 func StartService(service_adm svcadm.ServiceAdm) error {
 	logger.Debug(service_adm.GetServiceAdmName()+":", "service pre-init")
-	additional_env, additional_volumes, cap_adds, entrypoint, err := service_adm.PreInit()
+	additional_env, additional_volumes, additional_ports, cap_adds, entrypoint, err := service_adm.PreInit()
 	if err != nil {
 		return err
 	}
 	service := service_adm.GetService()
 
 	container_env := make(map[string]string)
-	for variable, value := range service.Container.Env {
+	for variable, value := range additional_env {
 		container_env[variable] = value
 	}
-	for variable, value := range additional_env {
+	for variable, value := range service.Container.Env {
 		container_env[variable] = value
 	}
 
 	container_volumes := make(map[string]string)
+	for volume, path := range additional_volumes {
+		container_volumes[volume] = path
+	}
 	if service.Persistence.Enabled {
 		for volume, path := range service.Persistence.Volumes {
 			container_volumes[volume] = path
 		}
 	}
-	for volume, path := range additional_volumes {
-		container_volumes[volume] = path
+
+	container_ports := make(map[int]int)
+	for port, host := range additional_ports {
+		container_ports[port] = host
+	}
+	for port, host := range service.Container.Ports {
+		container_ports[port] = host
 	}
 
 	logger.Debug(service_adm.GetServiceAdmName()+":", "service init")
-	err = containerutils.CreateContainer(service.Container.Name, fmt.Sprintf("%s:%s", service.Image.Repository, service.Image.Tag), serviceLabels(service_adm), container_volumes, service.Container.Ports, container_env, service.Container.Restart, cap_adds, entrypoint)
+	err = containerutils.CreateContainer(service.Container.Name, fmt.Sprintf("%s:%s", service.Image.Repository, service.Image.Tag), serviceLabels(service_adm), container_volumes, container_ports, container_env, service.Container.Restart, cap_adds, entrypoint)
 	if err != nil {
+		logger.Debug(err)
 		return err
 	}
 
 	logger.Debug(service_adm.GetServiceAdmName()+":", "service post-init")
-	return service_adm.PostInit(additional_env)
+	return service_adm.PostInit()
 }
 
 // StartServices starts all services that are enabled in the configuration file
