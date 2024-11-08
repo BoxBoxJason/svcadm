@@ -103,6 +103,7 @@ func (m *MinioAdm) PreInit() (map[string]string, map[string]string, map[int]int,
 
 	extended_env["MINIO_ROOT_USER"] = "minioadmin"
 	extended_env["MINIO_ROOT_PASSWORD"] = root_password
+	extended_env["MINIO_BROWSER_REDIRECT_URL"] = fmt.Sprintf("https://%s/minio", utils.GetHostname())
 
 	return extended_env, nil, nil, nil, []string{"server", "/data", "--console-address", ":9001"}, nil
 }
@@ -148,7 +149,7 @@ func (m *MinioAdm) WaitFor() error {
 func (m *MinioAdm) GenerateNginxConf() string {
 	return fmt.Sprintf(`# MinIO Web UI
 location /%s/ {
-	rewrite ^/%s/(.*) /$1 break;
+#   rewrite ^/%s/(.*) /$1 break;
 
 	proxy_set_header Host $http_host;
 	proxy_set_header X-Real-IP $remote_addr;
@@ -156,27 +157,35 @@ location /%s/ {
 	proxy_set_header X-Forwarded-Proto $scheme;
 	proxy_set_header X-NginX-Proxy true;
 
-	proxy_set_header Accept-Encoding "";
-	proxy_http_version 1.1;
-	proxy_set_header Connection "";
+	real_ip_header X-Real-IP;
 
-	proxy_buffering off;
+	proxy_connect_timeout 300;
+
+	proxy_http_version 1.1;
+	proxy_set_header Upgrade $http_upgrade;
+	proxy_set_header Connection "upgrade";
+
+	chunked_transfer_encoding off;
 
 	proxy_pass http://%s:9001/;
 }
 # MinIO API
 location /%s-api/ {
-	proxy_pass http://%s:9000;
+#   rewrite ^/%s-api/(.*) /$1 break;
+
 	proxy_set_header Host $http_host;
 	proxy_set_header X-Real-IP $remote_addr;
 	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 	proxy_set_header X-Forwarded-Proto $scheme;
 
+	proxy_connect_timeout 300;
+
 	proxy_http_version 1.1;
 	proxy_set_header Connection "";
+	chunked_transfer_encoding off;
 
-	proxy_buffering off;
-}`, m.Service.Name, m.Service.Name, m.Service.Container.Name, m.Service.Name, m.Service.Container.Name)
+	proxy_pass http://%s:9000/;
+}`, m.Service.Name, m.Service.Name, m.Service.Container.Name, m.Service.Name, m.Service.Name, m.Service.Container.Name)
 }
 
 // GetService returns the service object from the configuration
