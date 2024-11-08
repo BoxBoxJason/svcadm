@@ -92,9 +92,6 @@ services:
       restart: "always"
       # Configure the environment variables for minio
       env:
-        MINIO_ROOT_USER: "minioadmin"
-        # Leave empty to generate a random password
-        MINIO_ROOT_PASSWORD: ""
     nginx: true
     persistence:
       enabled: true
@@ -125,8 +122,8 @@ services:
       # Configure the volumes for nginx, leave empty to disable unwanted volumes
       volumes:
         # Path to the SSL certificate and key files (left: host machine, right: container must not be changed)
-        "/etc/ssl/certs/svcadm.crt": "/etc/ssl/certs/svcadm.crt"
-        "/etc/ssl/private/svcadm.key": "/etc/ssl/private/svcadm.key"
+        "/etc/ssl/certs/svcadm.crt": "/etc/ssl/certs/svcadm.crt:Z"
+        "/etc/ssl/private/svcadm.key": "/etc/ssl/private/svcadm.key:Z"
 
   - name: clamav
     enabled: false
