@@ -90,37 +90,38 @@ func (m *MinioAdm) DeleteBucket(bucket_name string) error {
 }
 
 // PreInit runs the pre init steps for the minio server
-func (m *MinioAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
+func (m *MinioAdm) PreInit() (map[string]string, map[string]string, map[int]int, []string, []string, error) {
 	extended_env := make(map[string]string)
 	var err error
 
 	// Set the environment variables for the minio server
-	root_user := m.Service.Container.Env["MINIO_ROOT_USER"]
-	if root_user == "" {
-		root_user = "minioadmin"
+	root_password, err := utils.GenerateRandomPassword(32)
+	if err != nil {
+		logger.Error(MINIOADM_LOG_PREFIX, "failed to generate a random password")
+		return nil, nil, nil, nil, nil, err
 	}
-	root_password := m.Service.Container.Env["MINIO_ROOT_PASSWORD"]
-	if root_password == "" {
-		root_password, err = utils.GenerateRandomPassword(32)
-		if err != nil {
-			logger.Error(MINIOADM_LOG_PREFIX, "failed to generate a random password")
-			return nil, nil, nil, nil, err
-		}
-	}
-	extended_env["MINIO_ROOT_USER"] = root_user
+
+	extended_env["MINIO_ROOT_USER"] = "minioadmin"
 	extended_env["MINIO_ROOT_PASSWORD"] = root_password
 
-	return extended_env, nil, nil, nil, nil
+	return extended_env, nil, nil, nil, []string{"server", "/data", "--console-address", ":9001"}, nil
 }
 
 // PostInit runs the post init steps for the minio server
-func (m *MinioAdm) PostInit(env_variables map[string]string) error {
-	minio_root_user := env_variables["MINIO_ROOT_USER"]
-	minio_root_password := env_variables["MINIO_ROOT_PASSWORD"]
+func (m *MinioAdm) PostInit() error {
 	// Wait for the minio server to be ready
 	err := m.WaitFor()
 	if err != nil {
 		logger.Error(err)
+		return err
+	}
+
+	minio_root_user, err := containerutils.GetContainerEnvVariable(m.Service.Container.Name, "MINIO_ROOT_USER")
+	if err != nil {
+		return err
+	}
+	minio_root_password, err := containerutils.GetContainerEnvVariable(m.Service.Container.Name, "MINIO_ROOT_PASSWORD")
+	if err != nil {
 		return err
 	}
 
