@@ -31,34 +31,32 @@ var (
 	NGINX_CONF_PATH = path.Join(NGINXADM_PATH, "nginx.conf")
 )
 
-const NGINX_CONF = `
-http {
-    server {
-        listen 80;
-        listen [::]:80;
-        server_name %s;
-        return 301 https://$host$request_uri;
-    }
+const NGINX_CONF = `server {
+	listen 80;
+	listen [::]:80;
+	server_name %s;
+	return 301 https://$host$request_uri;
+}
 
-    server {
-        listen 443 ssl;
-        listen [::]:443 ssl;
-        server_name %s;
-        ssl_certificate %s;
-        ssl_certificate_key %s;
-        ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_ciphers HIGH:!aNULL:!MD5;
+server {
+	listen 443 ssl;
+	listen [::]:443 ssl;
+	server_name %s;
+	ssl_certificate %s;
+	ssl_certificate_key %s;
+	ssl_protocols TLSv1.2 TLSv1.3;
+	ssl_ciphers HIGH:!aNULL:!MD5;
 
 %s
-	}
-}`
+}
+`
 
 type NginxAdm struct {
 	Service config.Service
 }
 
 // PreInit sets up the nginx service by generating the nginx configuration files with each service location
-func (n *NginxAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
+func (n *NginxAdm) PreInit() (map[string]string, map[string]string, map[int]int, []string, []string, error) {
 	// Generate the nginx configuration file
 	nginx_locations := ""
 	configuration := config.GetConfiguration()
@@ -72,11 +70,11 @@ func (n *NginxAdm) PreInit() (map[string]string, map[string]string, []string, []
 	nginx_conf := fmt.Sprintf(NGINX_CONF, hostname, hostname, "/etc/ssl/certs/svcadm.crt", "/etc/ssl/private/svcadm.key", nginx_locations)
 	err := fileutils.WriteToFile(NGINX_CONF_PATH, nginx_conf)
 
-	return nil, map[string]string{NGINX_CONF_PATH: "/etc/nginx/conf.d/default.conf"}, nil, nil, err
+	return nil, map[string]string{NGINX_CONF_PATH: "/etc/nginx/conf.d/default.conf:Z"}, nil, nil, nil, err
 }
 
 // PostInit sets up the nginx service after the configuration files have been generated (empty because nginx does not require post init)
-func (n *NginxAdm) PostInit(env_variables map[string]string) error {
+func (n *NginxAdm) PostInit() error {
 	return n.WaitFor()
 }
 
