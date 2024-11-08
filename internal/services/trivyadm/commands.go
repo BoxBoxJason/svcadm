@@ -16,8 +16,8 @@ type TrivyAdm struct {
 	Service config.Service
 }
 
-func (t *TrivyAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
-	return nil, nil, nil, []string{"server", "--listen", "0.0.0.0:4954"}, nil
+func (t *TrivyAdm) PreInit() (map[string]string, map[string]string, map[int]int, []string, []string, error) {
+	return nil, nil, nil, nil, []string{"server", "--listen", "0.0.0.0:4954"}, nil
 }
 
 func (t *TrivyAdm) CreateUser(user *config.User) error {
@@ -28,7 +28,7 @@ func (t *TrivyAdm) CreateAdminUser(user *config.User) error {
 	return nil
 }
 
-func (t *TrivyAdm) PostInit(env_variables map[string]string) error {
+func (t *TrivyAdm) PostInit() error {
 	return t.WaitFor()
 }
 

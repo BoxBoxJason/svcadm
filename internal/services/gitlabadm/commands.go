@@ -77,7 +77,7 @@ location /%s/ {
 }
 
 // PostInit creates the users in the gitlab instance
-func (g *GitLabAdm) PostInit(env_variables map[string]string) error {
+func (g *GitLabAdm) PostInit() error {
 	err := g.WaitFor()
 	if err != nil {
 		logger.Error(err)
@@ -90,10 +90,10 @@ func (g *GitLabAdm) PostInit(env_variables map[string]string) error {
 }
 
 // PreInit generates a random password for the root user and sets up the gitlab database
-func (g *GitLabAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
+func (g *GitLabAdm) PreInit() (map[string]string, map[string]string, map[int]int, []string, []string, error) {
 	root_password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	postgres_service := config.GetService("postgresql")
 	p := psqladm.PsqlAdm{Service: postgres_service}
@@ -102,12 +102,12 @@ func (g *GitLabAdm) PreInit() (map[string]string, map[string]string, []string, [
 	postgres_password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
 		logger.Error(GITLABADM_LOG_PREFIX, "failed to generate a random password for the PostgreSQL user")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	err = p.CreateUser(&config.User{Username: GITLAB_DB_USER, Password: postgres_password})
 	if err != nil {
 		logger.Error(GITLABADM_LOG_PREFIX, "failed to create the GitLab PostgreSQL user")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	} else {
 		logger.Info(GITLABADM_LOG_PREFIX, "successfully created the GitLab PostgreSQL user")
 	}
@@ -115,7 +115,7 @@ func (g *GitLabAdm) PreInit() (map[string]string, map[string]string, []string, [
 	err = p.CreateDatabase(GITLAB_DB_NAME, GITLAB_DB_USER)
 	if err != nil {
 		logger.Error(GITLABADM_LOG_PREFIX, "failed to create the GitLab PostgreSQL database")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	} else {
 		logger.Info(GITLABADM_LOG_PREFIX, "successfully created the GitLab PostgreSQL database")
 	}
@@ -130,7 +130,7 @@ func (g *GitLabAdm) PreInit() (map[string]string, map[string]string, []string, [
 		"GITLAB_ROOT_PASSWORD":  root_password,
 		"GITLAB_OMNIBUS_CONFIG": g.Service.Container.Env["GITLAB_OMNIBUS_CONFIG"] + fmt.Sprintf(" %s gitlab_rails['db_adapter'] = 'postgresql'; gitlab_rails['db_encoding'] = 'unicode'; gitlab_rails['db_database'] = '%s'; gitlab_rails['db_username'] = '%s'; gitlab_rails['db_password'] = '%s'; gitlab_rails['db_host'] = '%s'; gitlab_rails['db_port'] = '5432'; gitlab_rails['db_pool'] = 10", external_url, GITLAB_DB_NAME, GITLAB_DB_USER, postgres_password, postgres_service.Container.Name),
 	}
-	return extended_env, nil, nil, nil, nil
+	return extended_env, nil, nil, nil, nil, nil
 }
 
 // WaitFor waits for the gitlab instance to be ready, using the curl readiness check

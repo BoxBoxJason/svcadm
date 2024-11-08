@@ -41,12 +41,12 @@ func (v *VaultAdm) CreateAdminUser(user *config.User) error {
 }
 
 // PreInit sets up the vault database and environment variables
-func (v *VaultAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
-	return nil, nil, []string{"IPC_LOCK"}, []string{"server"}, nil
+func (v *VaultAdm) PreInit() (map[string]string, map[string]string, map[int]int, []string, []string, error) {
+	return nil, nil, nil, []string{"IPC_LOCK"}, []string{"server"}, nil
 }
 
 // PostInit Waits until the vault service is up and running, inits and unseals the vault, creates the users
-func (v *VaultAdm) PostInit(env_variables map[string]string) error {
+func (v *VaultAdm) PostInit() error {
 	err := v.WaitFor()
 	if err != nil {
 		return err

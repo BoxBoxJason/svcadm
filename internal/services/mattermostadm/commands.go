@@ -36,11 +36,11 @@ func (m *MattermostAdm) CreateAdminUser(user *config.User) error {
 }
 
 // PreInit sets up the mattermost database and environment variables, err
-func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, []string, []string, error) {
+func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, map[int]int, []string, []string, error) {
 	// Create the mattermost database
 	db_password, err := utils.GenerateRandomPassword(32)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	postgres_service := config.GetService("postgresql")
 	p := psqladm.PsqlAdm{Service: postgres_service}
@@ -48,14 +48,14 @@ func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, []strin
 	err = p.CreateUser(&config.User{Username: MATTERMOST_DB_USER, Password: db_password})
 	if err != nil {
 		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to create the mattermost PostgreSQL user")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	} else {
 		logger.Info(MATTERMOSTADM_LOG_PREFIX, "successfully created the mattermost PostgreSQL user")
 	}
 	err = p.CreateDatabase(MATTERMOST_DB_NAME, MATTERMOST_DB_USER)
 	if err != nil {
 		logger.Error(MATTERMOSTADM_LOG_PREFIX, "failed to create the mattermost PostgreSQL database")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	} else {
 		logger.Info(MATTERMOSTADM_LOG_PREFIX, "successfully created the mattermost PostgreSQL database")
 	}
@@ -69,11 +69,11 @@ func (m *MattermostAdm) PreInit() (map[string]string, map[string]string, []strin
 		extended_env["MM_SERVICESETTINGS_SITEURL"] = fmt.Sprintf("https://%s/mattermost", utils.GetHostname())
 	}
 
-	return extended_env, nil, nil, nil, nil
+	return extended_env, nil, nil, nil, nil, nil
 }
 
 // PostInit creates the users and admins in the mattermost service
-func (m *MattermostAdm) PostInit(env_variables map[string]string) error {
+func (m *MattermostAdm) PostInit() error {
 	err := m.WaitFor()
 	if err != nil {
 		logger.Error(err)
@@ -127,8 +127,8 @@ func (m *MattermostAdm) GenerateNginxConf() string {
 // WaitFor waits until the mattermost server is up and running
 func (m *MattermostAdm) WaitFor() error {
 	curl_command := []string{"curl", "-kfsL", "http://localhost:8065/mattermost/api/v4/system/ping"}
-	const retry_interval = 10
-	max_retries := 30
+	const retry_interval = 20
+	max_retries := 15
 	for max_retries > 0 {
 		response, err := containerutils.RunContainerCommandWithOutput(m.Service.Container.Name, curl_command...)
 		if err == nil {
