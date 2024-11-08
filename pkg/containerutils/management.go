@@ -37,6 +37,7 @@ func FetchContainerStatus(container_name string) (string, error) {
 // WaitForContainerReadiness waits for a container to be in a running state,
 // with a configurable retry interval and maximum number of retries
 func WaitForContainerReadiness(container_name string, retry_interval int, max_retries int) error {
+	time.Sleep(time.Duration(retry_interval) * time.Second)
 	for max_retries > 0 {
 		status, err := FetchContainerStatus(container_name)
 		if err != nil {

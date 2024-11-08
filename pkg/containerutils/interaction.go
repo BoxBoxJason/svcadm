@@ -1,13 +1,16 @@
 package containerutils
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/boxboxjason/svcadm/pkg/fileutils"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 func CreateContainer(container_name string, image string, labels map[string]string, volumes map[string]string, ports map[int]int, env map[string]string, restart_policy string, cap_add []string, cmd []string) error {
@@ -63,28 +66,46 @@ func RunContainerCommand(container_name string, command ...string) error {
 		return err
 	}
 	err = cli.ContainerExecStart(ctx, resp.ID, container.ExecStartOptions{})
-	// TODO: remove debug statement
-	if err != nil {
-		fmt.Println(err)
-	}
 	return err
 }
 
-func RunContainerCommandWithOutput(container_name string, command ...string) ([]byte, error) {
+func RunContainerCommandWithOutput(containerName string, command ...string) ([]byte, error) {
 	ctx := context.Background()
 
-	resp, err := cli.ContainerExecCreate(ctx, container_name, container.ExecOptions{Cmd: command})
+	// Create the exec instance with stdout and stderr attached
+	resp, err := cli.ContainerExecCreate(ctx, containerName, container.ExecOptions{
+		Cmd:          command,
+		AttachStdout: true,
+		AttachStderr: true,
+	})
 	if err != nil {
-		return []byte{}, err
+		return nil, fmt.Errorf("failed to create exec instance: %w", err)
 	}
-	out, err := cli.ContainerExecAttach(ctx, resp.ID, container.ExecStartOptions{})
-	if err != nil {
-		return []byte{}, err
-	}
-	defer out.Close()
 
-	output, err := io.ReadAll(out.Reader)
-	return output, err
+	// Attach to the exec instance to capture output
+	exec_start_resp, err := cli.ContainerExecAttach(ctx, resp.ID, container.ExecStartOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to exec instance: %w", err)
+	}
+	defer exec_start_resp.Close()
+
+	// Buffers to capture stdout and stderr
+	var stdoutBuf, stderrBuf bytes.Buffer
+
+	// Copy the output from resp.Reader to the buffers
+	// Use an io.TeeReader to separate stdout and stderr
+	outputDone := make(chan error)
+	go func() {
+		_, err := stdcopy.StdCopy(&stdoutBuf, &stderrBuf, exec_start_resp.Reader)
+		outputDone <- err
+	}()
+
+	// Wait for the command to complete
+	if err := <-outputDone; err != nil {
+		return nil, fmt.Errorf("failed to capture output: %w", err)
+	}
+
+	return stdoutBuf.Bytes(), nil
 }
 
 // FetchContainerLogs returns the logs of a container by its name
@@ -122,9 +143,10 @@ func GetContainerEnvVariable(container_name string, variable string) (string, er
 	}
 
 	for _, env := range inspect.Config.Env {
-		if env == variable {
-			return env, nil
+		split_env := strings.Split(env, "=")
+		if split_env[0] == variable {
+			return strings.Join(split_env[1:], "="), nil
 		}
 	}
-	return "", nil
+	return "", fmt.Errorf("environment variable %s not found in container %s", variable, container_name)
 }

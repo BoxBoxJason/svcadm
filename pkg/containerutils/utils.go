@@ -84,7 +84,7 @@ func PullImage(image_name string) error {
 	if err != nil {
 		return err
 	} else if exists {
-		logger.Info("Image", image_name, "is already present")
+		logger.Debug("Image", image_name, "is already present")
 		return nil
 	}
 
