@@ -54,6 +54,14 @@ The configuration of svcadm is done through a configuration file (which by defau
 - `backup <services>`: Backup the data for the specified services
 - `cleanup <services>`: Cleanup the data for the specified services
 
+#### Troubleshooting
+
+##### General
+- **Permission Denied in a container volume**: If you encounter permission denied errors when trying to access files in a container volume, ensure that the permissions on the host directory are set correctly. You also may need to add `:Z` to the volume mount at the end to ensure that SELinux contexts are correctly applied.
+
+##### Nginx
+- **Cannot start nginx on port 80 using rootless podman**: If you are using rootless podman and cannot start nginx on port 80 due to permission issues, you can add the following line (setting) to your `/etc/sysctl.conf` file: `net.ipv4.ip_unprivileged_port_start=80`. This will allow non-root users to bind to port 80.
+
 ### safeguard
 
 **safeguard** is a utility script designed to continuously monitor directories for malware and automatically quarantine any suspicious files. It uses the `clamscan` command to perform malware scanning and `inotifywait` to monitor directories for changes. Any new files added to the monitored directory are scanned for malware, and if any threats are detected, the files are moved to a quarantine directory for further analysis.
