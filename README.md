@@ -2,7 +2,7 @@
 
 svcadm is a command-line utility for deploying and managing development team services on a local machine. It is designed to simplify the process of setting up and managing development environments by providing a simple and intuitive interface for starting, stopping, and monitoring services.
 - Source code hosting & CI/CD (GitLab)
-- Secret management (Hashicorp Vault)
+- Secret management (Vaultwarden)
 - Team communication (Mattermost)
 - Databases (PostgreSQL)
 - Code quality tools (SonarQube)

@@ -33,7 +33,7 @@ general:
 # Configure the services to be managed
 services:
   - name: postgresql
-    # PostgreSQL must be enabled for the following services to work: gitlab, mattermost, sonarqube, vaultwarden
+    # PostgreSQL must be enabled for the following services to work: gitlab, mattermost, sonarqube
     enabled: true
     image:
       repository: "docker.io/library/postgres"
@@ -114,7 +114,6 @@ services:
       name: "nginx"
       # Configure the forwarded ports for nginx, values must be "host:container" format
       ports:
-        80: 80
         443: 443
       restart: "always"
     persistence:
@@ -147,6 +146,15 @@ services:
       # Configure the forwarded ports for gitlab, values must be "host:container" format
       ports: {}
       restart: "always"
+      env:
+        GITLAB_OMNIBUS_CONFIG: |
+          prometheus_monitoring['enable'] = false
+          alertmanager['enable'] = false
+          mattermost['enable'] = false
+          gitlab_exporter['enable'] = false
+          redis_exporter['enable'] = false
+          node_exporter['enable'] = false
+          sidekiq['metrics_enabled'] = false
     nginx: true
     persistence:
       enabled: true
@@ -204,25 +212,22 @@ services:
   - name: vault
     enabled: true
     image:
-      repository: "docker.io/hashicorp/vault"
+      repository: "docker.io/vaultwarden/server"
       tag: "latest"
     container:
-      name: "vault"
-      # Configure the forwarded ports for vault, values must be "host:container" format
+      name: "vaultwarden"
+      # Configure the forwarded ports for vaultwarden, values must be "host:container" format
       ports: {}
       restart: "always"
       env:
-        VAULT_LOCAL_CONFIG: '{"storage": {"file": {"path": "/vault/file"}}, "listener": [{"tcp": { "address": "0.0.0.0:8200", "tls_disable": true}}], "default_lease_ttl": "168h", "max_lease_ttl": "720h", "ui": true}'
+        SIGNUPS_ALLOWED: "false"
+        INVITATIONS_ALLOWED: "false"
     nginx: true
     persistence:
       enabled: true
-      # Configure the volumes for vault, leave empty to disable unwanted volumes
-      volumes:
-        vault_config: "/vault/config.d"
-        vault_file: "/vault/file"
-        vault_logs: "/vault/logs"
+      volumes: {}
     backup:
       enabled: true
       frequency: "daily"
       retention: 7
-      location: "./vault/backup"
+      location: "./vaultwarden/backup"

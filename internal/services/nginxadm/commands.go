@@ -38,6 +38,11 @@ const NGINX_CONF = `server {
 	return 301 https://$host$request_uri;
 }
 
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      "";
+}
+
 server {
 	listen 443 ssl;
 	listen [::]:443 ssl;

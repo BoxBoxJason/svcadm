@@ -38,7 +38,7 @@ func ValidateConfiguration() {
 		logger.Debug(fmt.Sprintf("validating service: %s", service.Name))
 		if _, ok := valid_services[service.Name]; !ok {
 			all_errors = append(all_errors, fmt.Sprintf("invalid service found: %s", service.Name))
-		} else {
+		} else if service.Enabled {
 			all_errors = append(all_errors, validateContainerContent(&service.Container)...)
 			all_errors = append(all_errors, validatePersistenceContent(&service.Persistence)...)
 			all_errors = append(all_errors, validateBackupContent(&service.Backup)...)
