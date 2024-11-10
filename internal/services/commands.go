@@ -214,10 +214,11 @@ func StartService(service_adm svcadm.ServiceAdm) error {
 	service := service_adm.GetService()
 
 	container_env := make(map[string]string)
-	for variable, value := range additional_env {
+	for variable, value := range service.Container.Env {
 		container_env[variable] = value
 	}
-	for variable, value := range service.Container.Env {
+
+	for variable, value := range additional_env {
 		container_env[variable] = value
 	}
 

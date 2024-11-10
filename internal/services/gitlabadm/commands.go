@@ -68,7 +68,7 @@ func (g *GitLabAdm) Backup(backup_path string) error {
 func (g *GitLabAdm) GenerateNginxConf() string {
 	return fmt.Sprintf(`# GitLab
 location /%s/ {
-	proxy_pass https://%s:443;
+	proxy_pass http://%s:80;
 	proxy_set_header Host $host;
 	proxy_set_header X-Real-IP $remote_addr;
 	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -91,7 +91,7 @@ func (g *GitLabAdm) PostInit() error {
 
 // PreInit generates a random password for the root user and sets up the gitlab database
 func (g *GitLabAdm) PreInit() (map[string]string, map[string]string, map[int]int, []string, []string, error) {
-	root_password, err := utils.GenerateRandomPassword(32)
+	root_password, err := utils.GenerateRandomPassword(64)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
@@ -123,20 +123,33 @@ func (g *GitLabAdm) PreInit() (map[string]string, map[string]string, map[int]int
 	external_url := ""
 	// Check if the gitlab service will be proxified by nginx
 	if g.Service.Nginx {
-		external_url = fmt.Sprintf("external_url 'https://%s/gitlab';", utils.GetHostname())
+		external_url = fmt.Sprintf(`external_url 'https://%s/gitlab';
+letsencrypt['enable'] = false;
+nginx['enable'] = false;
+`, utils.GetHostname())
+
 	}
 
 	extended_env := map[string]string{
-		"GITLAB_ROOT_PASSWORD":  root_password,
-		"GITLAB_OMNIBUS_CONFIG": g.Service.Container.Env["GITLAB_OMNIBUS_CONFIG"] + fmt.Sprintf(" %s gitlab_rails['db_adapter'] = 'postgresql'; gitlab_rails['db_encoding'] = 'unicode'; gitlab_rails['db_database'] = '%s'; gitlab_rails['db_username'] = '%s'; gitlab_rails['db_password'] = '%s'; gitlab_rails['db_host'] = '%s'; gitlab_rails['db_port'] = '5432'; gitlab_rails['db_pool'] = 10", external_url, GITLAB_DB_NAME, GITLAB_DB_USER, postgres_password, postgres_service.Container.Name),
+		"GITLAB_ROOT_PASSWORD": root_password,
+		"GITLAB_OMNIBUS_CONFIG": g.Service.Container.Env["GITLAB_OMNIBUS_CONFIG"] + fmt.Sprintf(`
+%s
+gitlab_rails['db_adapter'] = 'postgresql';
+gitlab_rails['db_encoding'] = 'unicode';
+gitlab_rails['db_database'] = '%s';
+gitlab_rails['db_username'] = '%s';
+gitlab_rails['db_password'] = '%s';
+gitlab_rails['db_host'] = '%s';
+gitlab_rails['db_port'] = '5432';`,
+			external_url, GITLAB_DB_NAME, GITLAB_DB_USER, postgres_password, postgres_service.Container.Name),
 	}
 	return extended_env, nil, nil, nil, nil, nil
 }
 
 // WaitFor waits for the gitlab instance to be ready, using the curl readiness check
 func (g *GitLabAdm) WaitFor() error {
-	const retry_interval = 20
-	max_retries := 15
+	const retry_interval = 60
+	max_retries := 10
 	for max_retries > 0 {
 		err := containerutils.RunContainerCommand(g.Service.Container.Name, "gitlab-healthcheck")
 		if err == nil {
