@@ -61,12 +61,29 @@ func StopContainer(container_name string) error {
 func RunContainerCommand(container_name string, command ...string) error {
 	ctx := context.Background()
 
-	resp, err := cli.ContainerExecCreate(ctx, container_name, container.ExecOptions{Cmd: command, AttachStderr: true})
+	resp, err := cli.ContainerExecCreate(ctx, container_name, container.ExecOptions{
+		Cmd:          command,
+		AttachStderr: true,
+	})
 	if err != nil {
 		return err
 	}
+
 	err = cli.ContainerExecStart(ctx, resp.ID, container.ExecStartOptions{})
-	return err
+	if err != nil {
+		return err
+	}
+
+	inspect_resp, err := cli.ContainerExecInspect(ctx, resp.ID)
+	if err != nil {
+		return err
+	}
+
+	if inspect_resp.ExitCode != 0 {
+		return fmt.Errorf("command %v in container %s exited with code %d", command, container_name, inspect_resp.ExitCode)
+	}
+
+	return nil
 }
 
 func RunContainerCommandWithOutput(containerName string, command ...string) ([]byte, error) {
@@ -92,17 +109,27 @@ func RunContainerCommandWithOutput(containerName string, command ...string) ([]b
 	// Buffers to capture stdout and stderr
 	var stdoutBuf, stderrBuf bytes.Buffer
 
-	// Copy the output from resp.Reader to the buffers
-	// Use an io.TeeReader to separate stdout and stderr
+	// Copy the output from exec_start_resp.Reader to the buffers
 	outputDone := make(chan error)
 	go func() {
 		_, err := stdcopy.StdCopy(&stdoutBuf, &stderrBuf, exec_start_resp.Reader)
 		outputDone <- err
 	}()
 
-	// Wait for the command to complete
+	// Wait for the output copying to complete
 	if err := <-outputDone; err != nil {
 		return nil, fmt.Errorf("failed to capture output: %w", err)
+	}
+
+	// Inspect the exec instance result to check the exit code
+	inspect_resp, err := cli.ContainerExecInspect(ctx, resp.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect exec instance: %w", err)
+	}
+
+	// Check for non-zero exit code and return an error if found
+	if inspect_resp.ExitCode != 0 {
+		return stdoutBuf.Bytes(), fmt.Errorf("command %v in container %s exited with code %d: %s", command, containerName, inspect_resp.ExitCode, stderrBuf.String())
 	}
 
 	return stdoutBuf.Bytes(), nil
